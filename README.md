@@ -1,30 +1,99 @@
-# Attendance Tracker
+# GradeIT
 
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
+![GradeIT Logo](./public/icon-192.png)
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/kev0-4s-projects/v0-attendance-tracker)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/ArmkXAhVbaN)
+GradeIT is a modern web application designed to help students and educators track and analyze academic performance. It provides tools for managing marks, monitoring attendance, and visualizing learning trends to provide valuable insights.
 
-## Overview
+## Key Features
 
-This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
+- **User Authentication:** Secure login and registration system.
+- **Marks Management:** Easily record, view, and update academic marks.
+- **Attendance Tracking:** Monitor and manage student attendance records.
+- **Trend Analysis:** Visualize marks and attendance trends with interactive charts.
+- **PDF Report Generation:** Create and download PDF summaries of academic performance.
+- **User Profiles:** Personalized user dashboards and settings.
+- **Responsive Design:** Access GradeIT on any device, desktop or mobile.
 
-## Deployment
+## Tech Stack
 
-Your project is live at:
+- **Frontend:** Next.js (v15), React (v19), TypeScript
+- **UI Components:** shadcn/ui, Radix UI
+- **Styling:** Tailwind CSS
+- **Charting:** ApexCharts, Recharts
+- **Backend & Database:** Firebase (Firestore, Firebase Authentication)
+- **Form Handling:** React Hook Form, Zod
+- **Date Utilities:** date-fns
+- **Deployment:** (Assuming Vercel or similar, can be added later if known)
 
-**[https://vercel.com/kev0-4s-projects/v0-attendance-tracker](https://vercel.com/kev0-4s-projects/v0-attendance-tracker)**
+## Getting Started
 
-## Build your app
+Follow these instructions to get a copy of the project up and running on your local machine for development and testing purposes.
 
-Continue building your app on:
+### Prerequisites
 
-**[https://v0.dev/chat/projects/ArmkXAhVbaN](https://v0.dev/chat/projects/ArmkXAhVbaN)**
+- Node.js (v18 or later recommended)
+- pnpm (You can install it via `npm install -g pnpm`)
 
-## How It Works
+### Installation
 
-1. Create and modify your project using [v0.dev](https://v0.dev)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+1.  **Clone the repository:**
+
+    ```bash
+    git clone https://github.com/kev0-4/gradeit
+    cd my-v0-project
+    ```
+
+2.  **Install dependencies:**
+
+    ```bash
+    pnpm install
+    ```
+
+3.  **Set up Firebase:**
+
+    - Create a Firebase project at [https://console.firebase.google.com/](https://console.firebase.google.com/).
+    - Enable Firestore and Firebase Authentication.
+    - Obtain your Firebase project configuration (API Key, Auth Domain, Project ID, etc.).
+    - Create a `.env.local` file in the root of the project.
+    - Add your Firebase configuration to `.env.local` like this:
+      ```env
+      NEXT_PUBLIC_FIREBASE_API_KEY="your_api_key"
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="your_auth_domain"
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID="your_project_id"
+      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="your_storage_bucket"
+      NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="your_messaging_sender_id"
+      NEXT_PUBLIC_FIREBASE_APP_ID="your_app_id"
+      # Optional, if using measurement
+      # NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID="your_measurement_id"
+      ```
+
+4.  **Run the development server:**
+    ```bash
+    pnpm dev
+    ```
+    Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+## Available Scripts
+
+In the project directory, you can run the following commands:
+
+- `pnpm dev`: Runs the app in development mode. Open [http://localhost:3000](http://localhost:3000) to view it in the browser. The page will reload if you make edits.
+- `pnpm build`: Builds the app for production to the `.next` folder.
+- `pnpm start`: Starts the production server. You need to run `pnpm build` before this.
+- `pnpm lint`: Runs Next.js' built-in ESLint checks.
+
+## Contributing
+
+Contributions are welcome! If you have suggestions for improving GradeIT, please feel free to:
+
+1.  Fork the Project
+2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4.  Push to the Branch (`git push origin feature/AmazingFeature`)
+5.  Open a Pull Request
+
+Please ensure your code adheres to the existing style and that any new features are well-tested.
+
+## License
+
+Distributed under the MIT License. See `LICENSE` file for more information.
