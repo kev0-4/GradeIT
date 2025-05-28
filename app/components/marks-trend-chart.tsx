@@ -3,11 +3,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { useTheme } from "next-themes";
 import dynamic from "next/dynamic";
-import { getAttendanceHistory } from "../utils/user-data";
-import {
-  groupAttendanceByPeriod,
-  getSubjectWiseAttendance,
-} from "../utils/dateUtils";
+import { getMarksHistory } from "../utils/user-data";
+import { groupMarksByPeriod, getSubjectWiseMarks } from "../utils/dateUtils";
 import { useAuth } from "../contexts/auth-context";
 
 // Default colors for both light and dark themes
@@ -17,6 +14,7 @@ const DEFAULT_COLORS = {
     text: "#111827",
     background: "#F9FAFB",
     grid: "#E5E7EB",
+    success: "#059669",
     warning: "#D97706",
     subjects: [
       "#059669",
@@ -34,6 +32,7 @@ const DEFAULT_COLORS = {
     text: "#E5E7EB",
     background: "#1F2937",
     grid: "#374151",
+    success: "#10B981",
     warning: "#F59E0B",
     subjects: [
       "#10B981",
@@ -67,17 +66,18 @@ const Chart = dynamic(
   }
 );
 
-interface AttendanceTrendProps {
+interface MarksTrendProps {
   subjects: any[];
   refreshTrigger?: number;
 }
 
-export default function AttendanceTrendChart({
+export default function MarksTrendChart({
   subjects,
   refreshTrigger,
-}: AttendanceTrendProps) {
+}: MarksTrendProps) {
+  // 1. State hooks
   const [mounted, setMounted] = useState(false);
-  const [attendanceHistory, setAttendanceHistory] = useState([]);
+  const [marksHistory, setMarksHistory] = useState([]);
   const [chartPeriod, setChartPeriod] = useState<
     "daily" | "weekly" | "monthly"
   >("monthly");
@@ -86,107 +86,75 @@ export default function AttendanceTrendChart({
   );
   const [loading, setLoading] = useState(true);
 
+  // 2. Context hooks
   const { theme, systemTheme } = useTheme();
   const { user } = useAuth();
 
-  // Safely get current theme with defaults
+  // 3. Derived state with fallbacks
   const currentTheme =
     theme === "system" ? systemTheme || "light" : theme || "light";
 
-  // Always return colors - use defaults if anything fails
+  // 4. Memoized colors with guaranteed defaults
   const colors = useMemo(() => {
-    try {
-      return currentTheme === "dark"
-        ? DEFAULT_COLORS.dark
-        : DEFAULT_COLORS.light;
-    } catch (error) {
-      console.error("Error getting theme colors, using light theme", error);
-      return DEFAULT_COLORS.light;
-    }
+    return currentTheme === "dark" ? DEFAULT_COLORS.dark : DEFAULT_COLORS.light;
   }, [currentTheme]);
 
+  // 5. Effects
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    const fetchAttendanceHistory = async () => {
+    const fetchMarksHistory = async () => {
       if (!user) return;
 
       setLoading(true);
       try {
-        const history = await getAttendanceHistory(user);
-        console.log("Fetched attendance records:", history.length, history);
-
-        // Verify data quality
-        const withMissingAttended = history.filter(
-          (e) => e.attended === undefined
-        ).length;
-        const withMissingHappened = history.filter(
-          (e) => e.happened === undefined
-        ).length;
-        console.log(
-          `Data quality: ${withMissingAttended} missing attended, ${withMissingHappened} missing happened`
-        );
-
-        setAttendanceHistory(history);
+        const history = await getMarksHistory(user);
+        setMarksHistory(history);
       } catch (error) {
-        console.error("Error fetching attendance history:", error);
+        console.error("Error fetching marks history:", error);
       } finally {
         setLoading(false);
       }
     };
 
     if (user) {
-      fetchAttendanceHistory();
+      fetchMarksHistory();
     }
   }, [user, refreshTrigger]);
 
   // Memoize all chart data calculations
-  // Memoize all chart data calculations
-  const { groupedData, currentAttendance, chartData, series } = useMemo(() => {
-    const grouped = groupAttendanceByPeriod(attendanceHistory, chartPeriod);
-    const current = getSubjectWiseAttendance(subjects);
+  const { groupedData, currentMarks, series } = useMemo(() => {
+    if (!marksHistory || marksHistory.length === 0) {
+      return { groupedData: [], currentMarks: [], series: [] };
+    }
 
-    // console.log("Raw grouped data:", grouped); // Debug log
+    const grouped = groupMarksByPeriod(marksHistory, chartPeriod);
+    const current = getSubjectWiseMarks(subjects);
 
-    let data: any = [];
     let ser: any = [];
 
     if (chartType === "overall") {
-      data = grouped.slice(-12).map((item) => {
-        // Debug log to check the values
-        // console.log(`Period ${item.period}:`, {
-        //   attended: item.attendedClasses,
-        //   total: item.totalClasses,
-        //   originalPercentage: item.percentage,
-        // });
-
-        // Calculate percentage manually to verify
-        const calculatedPercentage =
-          item.totalClasses > 0
-            ? (item.attendedClasses / item.totalClasses) * 100
-            : 0;
-
-        return {
-          x: item.period,
-          y: Math.round(calculatedPercentage * 100) / 100,
-          totalClasses: item.totalClasses,
-          attendedClasses: item.attendedClasses,
-          subjectCount: item.subjectCount,
-        };
-      });
+      const chartData = grouped.slice(-12).map((item) => ({
+        x: item.period,
+        y: Math.round(item.percentage * 100) / 100,
+        totalMarks: item.totalMarks,
+        scoredMarks: item.scoredMarks,
+        examCount: item.examCount,
+        subjectCount: item.subjectCount,
+      }));
 
       ser = [
         {
-          name: "Overall Attendance %",
-          data: data,
+          name: "Overall Marks %",
+          data: chartData,
           color: colors.primary,
         },
       ];
     } else {
       const subjectNames = [
-        ...new Set(attendanceHistory.map((entry) => entry.subjectName)),
+        ...new Set(marksHistory.map((entry) => entry.subjectName)),
       ].filter(Boolean);
       const periods = grouped.slice(-12).map((item) => item.period);
 
@@ -194,107 +162,207 @@ export default function AttendanceTrendChart({
         name: subjectName,
         data: periods.map((period) => {
           const periodData = grouped.find((item) => item.period === period);
-          if (!periodData || !periodData.subjectsData) {
+          if (!periodData || !periodData.subjectsData)
             return { x: period, y: 0 };
-          }
 
           const subjectData = periodData.subjectsData.find(
             (s) => s.name === subjectName
           );
-
-          if (!subjectData) {
-            return { x: period, y: 0 };
-          }
-
-          // Debug log for subject data
-          // console.log(`Subject ${subjectName} in ${period}:`, {
-          //   attended: subjectData.attendedClasses,
-          //   total: subjectData.totalClasses,
-          //   originalPercentage: subjectData.percentage,
-          // });
-
-          const calculatedPercentage =
-            subjectData.totalClasses > 0
-              ? (subjectData.attendedClasses / subjectData.totalClasses) * 100
-              : 0;
-
           return {
             x: period,
-            y: Math.round(calculatedPercentage * 100) / 100,
-            totalClasses: subjectData.totalClasses,
-            attendedClasses: subjectData.attendedClasses,
+            y: subjectData ? Math.round(subjectData.percentage * 100) / 100 : 0,
+            totalMarks: subjectData?.totalMarks || 0,
+            scoredMarks: subjectData?.scoredMarks || 0,
+            examCount: subjectData?.examCount || 0,
           };
         }),
         color: colors.subjects[index % colors.subjects.length],
       }));
     }
 
-    return {
-      groupedData: grouped,
-      currentAttendance: current,
-      chartData: data,
-      series: ser,
-    };
-  }, [attendanceHistory, chartPeriod, subjects, chartType, colors]);
+    return { groupedData: grouped, currentMarks: current, series: ser };
+  }, [marksHistory, chartPeriod, subjects, chartType, colors]);
 
-  const chartOptions = useMemo(
-    () => ({
+  const chartOptions = useMemo(() => {
+    const baseOptions = {
       chart: {
         type: chartType === "overall" ? "area" : "line",
-        toolbar: { show: true },
-        animations: { enabled: true },
+        toolbar: {
+          show: true,
+          tools: {
+            download: true,
+            selection: false,
+            zoom: false,
+            zoomin: false,
+            zoomout: false,
+            pan: false,
+            reset: false,
+          },
+        },
+        animations: {
+          enabled: true,
+          easing: "easeinout",
+          speed: 800,
+        },
         background: "transparent",
         foreColor: colors.text,
       },
       colors: chartType === "overall" ? [colors.primary] : colors.subjects,
-      stroke: { curve: "smooth", width: chartType === "overall" ? 3 : 2 },
-      markers: { size: chartType === "overall" ? 6 : 4 },
-      grid: { borderColor: colors.grid },
-      xaxis: { type: "category", labels: { style: { colors: colors.text } } },
+      stroke: {
+        curve: "smooth",
+        width: chartType === "overall" ? 3 : 2,
+      },
+      markers: {
+        size: chartType === "overall" ? 6 : 4,
+        hover: {
+          size: chartType === "overall" ? 8 : 6,
+        },
+        strokeColors: colors.background,
+        strokeWidth: 2,
+      },
+      grid: {
+        borderColor: colors.grid,
+        strokeDashArray: 3,
+        xaxis: {
+          lines: {
+            show: true,
+          },
+        },
+        yaxis: {
+          lines: {
+            show: true,
+          },
+        },
+      },
+      xaxis: {
+        type: "category",
+        labels: {
+          style: {
+            colors: colors.text,
+            fontSize: "12px",
+            fontWeight: 500,
+          },
+          rotate: -45,
+        },
+        axisBorder: {
+          color: colors.grid,
+        },
+        axisTicks: {
+          color: colors.grid,
+        },
+      },
       yaxis: {
-        labels: { formatter: (val: number) => `${val.toFixed(0)}%` },
+        title: {
+          text: "Marks Percentage (%)",
+          style: {
+            color: colors.text,
+            fontSize: "14px",
+            fontWeight: 600,
+          },
+        },
         min: 0,
         max: 100,
+        labels: {
+          style: {
+            colors: colors.text,
+            fontSize: "12px",
+          },
+          formatter: (val: number) => `${val.toFixed(0)}%`,
+        },
       },
-      tooltip: { theme: currentTheme === "dark" ? "dark" : "light" },
+      tooltip: {
+        theme: currentTheme === "dark" ? "dark" : "light",
+        style: {
+          fontSize: "12px",
+        },
+      },
       legend: {
         show: chartType === "subject-wise",
-        labels: { colors: colors.text },
+        position: "top",
+        horizontalAlign: "center",
+        fontSize: "12px",
+        fontWeight: 500,
+        labels: {
+          colors: colors.text,
+        },
+        markers: {
+          width: 8,
+          height: 8,
+        },
       },
-    }),
-    [chartType, colors, currentTheme]
-  );
-  if (!mounted) {
+      dataLabels: {
+        enabled: false,
+      },
+    };
+
+    if (chartType === "overall") {
+      return {
+        ...baseOptions,
+        fill: {
+          type: "gradient",
+          gradient: {
+            shadeIntensity: 1,
+            opacityFrom: 0.7,
+            opacityTo: 0.1,
+            stops: [0, 90, 100],
+            colorStops: [
+              {
+                offset: 0,
+                color: colors.primary,
+                opacity: 0.7,
+              },
+              {
+                offset: 100,
+                color: colors.primary,
+                opacity: 0.1,
+              },
+            ],
+          },
+        },
+        annotations: {
+          yaxis: [
+            {
+              y: 70,
+              borderColor: colors.success,
+              strokeDashArray: 5,
+              label: {
+                borderColor: colors.success,
+                style: {
+                  color: colors.background,
+                  background: colors.success,
+                  fontSize: "11px",
+                },
+                text: "Target: 70% (GPA 8.0)",
+                position: "right",
+                offsetX: -10,
+              },
+            },
+          ],
+        },
+      };
+    }
+
+    return baseOptions;
+  }, [chartType, colors, currentTheme]);
+
+  if (!mounted || loading) {
     return (
       <div className="h-[350px] flex items-center justify-center">
-        Loading chart...
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-2"></div>
       </div>
     );
   }
 
-  if (loading) {
-    return (
-      <div className="h-[350px] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-2"></div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Loading attendance data...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (attendanceHistory.length === 0) {
+  if (marksHistory.length === 0) {
     return (
       <div className="h-[350px] flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
         <div className="text-center">
           <span className="material-symbols-outlined text-4xl text-gray-400 mb-2">
             trending_up
           </span>
-          <p className="text-lg font-medium mb-2">No Attendance History</p>
+          <p className="text-lg font-medium mb-2">No Marks History</p>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Start logging your attendance to see trends and analytics.
+            Start adding exam marks to see trends and analytics.
           </p>
         </div>
       </div>
@@ -305,7 +373,7 @@ export default function AttendanceTrendChart({
     <div className="space-y-4">
       {/* Controls */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h3 className="text-lg font-semibold">Attendance Trends</h3>
+        <h3 className="text-lg font-semibold">Marks Trends</h3>
         <div className="flex flex-col sm:flex-row gap-2">
           {/* Chart Type Selection */}
           <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
@@ -352,7 +420,7 @@ export default function AttendanceTrendChart({
 
       {/* Chart */}
       <div className="h-[350px] bg-white dark:bg-gray-800 rounded-lg p-4">
-        {mounted && (
+        {mounted && series && series.length > 0 && (
           <Chart
             type={chartType === "overall" ? "area" : "line"}
             height={300}
@@ -365,9 +433,11 @@ export default function AttendanceTrendChart({
 
       {/* Current Subject Status */}
       <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
-        <h4 className="text-md font-semibold mb-3">Current Subject Status</h4>
+        <h4 className="text-md font-semibold mb-3">
+          Current Subject Performance
+        </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {currentAttendance.map((subject, index) => (
+          {currentMarks.map((subject, index) => (
             <div
               key={subject.name}
               className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
@@ -380,7 +450,8 @@ export default function AttendanceTrendChart({
                   {subject.name}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {subject.attended}/{subject.total} classes
+                  {subject.scored}/{subject.total} marks • {subject.credits}{" "}
+                  credits
                 </p>
               </div>
               <div className="flex items-center space-x-2">
@@ -391,15 +462,22 @@ export default function AttendanceTrendChart({
                       colors.subjects[index % colors.subjects.length],
                   }}
                 ></div>
-                <span
-                  className={`text-sm font-bold ${
-                    subject.percentage >= subject.goal
-                      ? "text-green-600 dark:text-green-400"
-                      : "text-red-600 dark:text-red-400"
-                  }`}
-                >
-                  {subject.percentage.toFixed(1)}%
-                </span>
+                <div className="text-right">
+                  <span
+                    className={`text-sm font-bold ${
+                      subject.gradePoint >= 8
+                        ? "text-green-600 dark:text-green-400"
+                        : subject.gradePoint >= 7
+                        ? "text-yellow-600 dark:text-yellow-400"
+                        : "text-red-600 dark:text-red-400"
+                    }`}
+                  >
+                    {subject.percentage.toFixed(1)}%
+                  </span>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    GPA: {subject.gradePoint}
+                  </p>
+                </div>
               </div>
             </div>
           ))}
@@ -410,13 +488,13 @@ export default function AttendanceTrendChart({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center">
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-            Total Entries
+            Total Exams
           </p>
-          <p className="text-lg font-bold">{attendanceHistory.length}</p>
+          <p className="text-lg font-bold">{marksHistory.length}</p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center">
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-            Avg Attendance
+            Avg Marks
           </p>
           <p className="text-lg font-bold">
             {groupedData.length > 0
@@ -430,7 +508,7 @@ export default function AttendanceTrendChart({
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center">
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-            Best Period
+            Best Performance
           </p>
           <p className="text-lg font-bold">
             {groupedData.length > 0
@@ -443,7 +521,7 @@ export default function AttendanceTrendChart({
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center">
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-            Subjects Tracked
+            Subjects
           </p>
           <p className="text-lg font-bold">{subjects.length}</p>
         </div>

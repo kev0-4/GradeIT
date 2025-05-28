@@ -1,4 +1,6 @@
 import jsPDF from "jspdf"
+import type { User } from "firebase/auth"
+import { getUserDocuments } from "./user-data"
 
 // Define types
 interface SubjectAttendance {
@@ -28,19 +30,76 @@ interface SubjectMarks {
   gradePoint: number
 }
 
+// Update the generatePDFReport function to accept user parameter and fetch data
 export const generatePDFReport = async (
-  attendanceData: SubjectAttendance[],
-  marksData: SubjectMarks[],
-  overallAttendance: { currentPercentage: string; requiredClasses: number },
-  marksSummary: {
+  user: User,
+  attendanceData?: SubjectAttendance[],
+  marksData?: SubjectMarks[],
+  overallAttendance?: { currentPercentage: string; requiredClasses: number },
+  marksSummary?: {
     totalAchieved: number
     totalTaken: number
     totalPossible: number
     overallPercentage: string
     progressPercentage: string
   },
-  averages: { avgPercentage: number; avgGPA: number },
+  averages?: { avgPercentage: number; avgGPA: number },
 ) => {
+  // If data is not provided, fetch it
+  let finalAttendanceData = attendanceData
+  let finalMarksData = marksData
+
+  if (!finalAttendanceData) {
+    finalAttendanceData = await getUserDocuments(user, "subjects")
+  }
+
+  if (!finalMarksData) {
+    finalMarksData = await getUserDocuments(user, "marks")
+  }
+
+  // Calculate missing parameters if not provided
+  let finalOverallAttendance = overallAttendance
+  if (!finalOverallAttendance) {
+    const totalAttended = finalAttendanceData.reduce((sum, subject) => sum + subject.attended, 0)
+    const totalHappened = finalAttendanceData.reduce((sum, subject) => sum + subject.happened, 0)
+    const currentPercentage = totalHappened > 0 ? ((totalAttended / totalHappened) * 100).toFixed(1) : "0"
+    const requiredClasses = totalHappened > 0 ? Math.ceil((0.75 * totalHappened - totalAttended) / 0.25) : 0
+
+    finalOverallAttendance = { currentPercentage, requiredClasses }
+  }
+
+  let finalMarksSummary = marksSummary
+  if (!finalMarksSummary && finalMarksData.length > 0) {
+    const totalAchieved = finalMarksData.reduce((sum, subject) => sum + subject.totalScoredMarks, 0)
+    const totalTaken = finalMarksData.reduce((sum, subject) => sum + subject.totalMaxMarks, 0)
+    const totalPossible = finalMarksData.reduce((sum, subject) => sum + subject.credits * 25, 0)
+    const overallPercentage = totalTaken > 0 ? ((totalAchieved / totalTaken) * 100).toFixed(1) : "0"
+    const progressPercentage = totalPossible > 0 ? ((totalAchieved / totalPossible) * 100).toFixed(1) : "0"
+
+    finalMarksSummary = { totalAchieved, totalTaken, totalPossible, overallPercentage, progressPercentage }
+  }
+
+  let finalAverages = averages
+  if (!finalAverages && finalMarksData.length > 0) {
+    const totalCredits = finalMarksData.reduce((sum, subject) => sum + subject.credits, 0)
+    const weightedGPA = finalMarksData.reduce((sum, subject) => sum + subject.gradePoint * subject.credits, 0)
+    const totalPercentage = finalMarksData.reduce((sum, subject) => sum + subject.percentage, 0)
+    const avgGPA = totalCredits > 0 ? weightedGPA / totalCredits : 0
+    const avgPercentage = finalMarksData.length > 0 ? totalPercentage / finalMarksData.length : 0
+
+    finalAverages = { avgPercentage, avgGPA }
+  }
+
+  // Set default values if still undefined
+  finalMarksSummary = finalMarksSummary || {
+    totalAchieved: 0,
+    totalTaken: 0,
+    totalPossible: 0,
+    overallPercentage: "0",
+    progressPercentage: "0",
+  }
+  finalAverages = finalAverages || { avgPercentage: 0, avgGPA: 0 }
+
   // Create a new PDF document
   const pdf = new jsPDF("p", "mm", "a4")
   const pageWidth = pdf.internal.pageSize.getWidth()
@@ -80,13 +139,13 @@ export const generatePDFReport = async (
   pdf.setTextColor(60, 60, 60)
 
   // Left column
-  pdf.text(`Overall Attendance: ${overallAttendance.currentPercentage}%`, margin + 5, yPos)
+  pdf.text(`Overall Attendance: ${finalOverallAttendance.currentPercentage}%`, margin + 5, yPos)
   yPos += 5
-  pdf.text(`Classes Needed for 75%: ${overallAttendance.requiredClasses}`, margin + 5, yPos)
+  pdf.text(`Classes Needed for 75%: ${finalOverallAttendance.requiredClasses}`, margin + 5, yPos)
 
   // Right column
-  pdf.text(`Current GPA: ${averages.avgGPA.toFixed(2)}`, pageWidth - margin - 60, yPos - 5)
-  pdf.text(`Overall Percentage: ${averages.avgPercentage.toFixed(1)}%`, pageWidth - margin - 60, yPos)
+  pdf.text(`Current GPA: ${finalAverages.avgGPA.toFixed(2)}`, pageWidth - margin - 60, yPos - 5)
+  pdf.text(`Overall Percentage: ${finalAverages.avgPercentage.toFixed(1)}%`, pageWidth - margin - 60, yPos)
 
   yPos += 10
 
@@ -97,15 +156,19 @@ export const generatePDFReport = async (
   // Attendance progress bar
   pdf.text("Attendance Progress:", margin + 5, yPos + 5)
   pdf.rect(margin + 45, yPos + 2, 60, 4, "S")
-  const attendanceWidth = Math.min((Number.parseFloat(overallAttendance.currentPercentage) / 100) * 60, 60)
-  pdf.setFillColor(Number.parseFloat(overallAttendance.currentPercentage) >= 75 ? 46 : 231, 204, 76)
+  const attendanceWidth = Math.min((Number.parseFloat(finalOverallAttendance.currentPercentage) / 100) * 60, 60)
+  pdf.setFillColor(Number.parseFloat(finalOverallAttendance.currentPercentage) >= 75 ? 46 : 231, 204, 76)
   pdf.rect(margin + 45, yPos + 2, attendanceWidth, 4, "F")
 
   // GPA progress bar
   pdf.text("GPA Progress:", pageWidth - margin - 60, yPos + 5)
   pdf.rect(pageWidth - margin - 30, yPos + 2, 30, 4, "S")
-  const gpaWidth = Math.min((averages.avgGPA / 10) * 30, 30)
-  pdf.setFillColor(averages.avgGPA >= 8 ? 46 : 231, averages.avgGPA >= 8 ? 204 : 76, averages.avgGPA >= 8 ? 113 : 60)
+  const gpaWidth = Math.min((finalAverages.avgGPA / 10) * 30, 30)
+  pdf.setFillColor(
+    finalAverages.avgGPA >= 8 ? 46 : 231,
+    finalAverages.avgGPA >= 8 ? 204 : 76,
+    finalAverages.avgGPA >= 8 ? 113 : 60,
+  )
   pdf.rect(pageWidth - margin - 30, yPos + 2, gpaWidth, 4, "F")
 
   yPos += 15
@@ -119,11 +182,15 @@ export const generatePDFReport = async (
   // Marks summary
   pdf.setFontSize(10)
   pdf.setTextColor(60, 60, 60)
-  pdf.text(`Total Marks Achieved: ${marksSummary.totalAchieved} / ${marksSummary.totalTaken}`, margin + 5, yPos)
-  pdf.text(`Total Possible Marks: ${marksSummary.totalPossible}`, pageWidth - margin - 60, yPos)
+  pdf.text(
+    `Total Marks Achieved: ${finalMarksSummary.totalAchieved} / ${finalMarksSummary.totalTaken}`,
+    margin + 5,
+    yPos,
+  )
+  pdf.text(`Total Possible Marks: ${finalMarksSummary.totalPossible}`, pageWidth - margin - 60, yPos)
   yPos += 5
-  pdf.text(`Overall Percentage: ${marksSummary.overallPercentage}%`, margin + 5, yPos)
-  pdf.text(`Progress: ${marksSummary.progressPercentage}%`, pageWidth - margin - 60, yPos)
+  pdf.text(`Overall Percentage: ${finalMarksSummary.overallPercentage}%`, margin + 5, yPos)
+  pdf.text(`Progress: ${finalMarksSummary.progressPercentage}%`, pageWidth - margin - 60, yPos)
   yPos += 10
 
   // Subject marks table
@@ -146,7 +213,7 @@ export const generatePDFReport = async (
   pdf.setFontSize(8)
   pdf.setTextColor(60, 60, 60)
 
-  marksData.forEach((subject, index) => {
+  finalMarksData.forEach((subject, index) => {
     if (yPos > pageHeight - 30) {
       // Add new page if we're near the bottom
       pdf.addPage()
@@ -212,7 +279,7 @@ export const generatePDFReport = async (
   pdf.setFontSize(8)
   pdf.setTextColor(60, 60, 60)
 
-  attendanceData.forEach((subject, index) => {
+  finalAttendanceData.forEach((subject, index) => {
     if (yPos > pageHeight - 30) {
       // Add new page if we're near the bottom
       pdf.addPage()
@@ -269,13 +336,13 @@ export const generatePDFReport = async (
   const recommendations = []
 
   // GPA recommendations
-  if (averages.avgGPA < 8) {
+  if (finalAverages.avgGPA < 8) {
     recommendations.push(
-      `Focus on improving your GPA (currently ${averages.avgGPA.toFixed(2)}) to reach the target of 8.0.`,
+      `Focus on improving your GPA (currently ${finalAverages.avgGPA.toFixed(2)}) to reach the target of 8.0.`,
     )
 
     // Find subjects with low GPA
-    const lowGPASubjects = marksData
+    const lowGPASubjects = finalMarksData
       .filter((s) => s.gradePoint < 7)
       .sort((a, b) => a.gradePoint - b.gradePoint)
       .slice(0, 3)
@@ -284,20 +351,20 @@ export const generatePDFReport = async (
       recommendations.push(`Prioritize improvement in: ${lowGPASubjects.map((s) => s.subjectName).join(", ")}.`)
     }
   } else {
-    recommendations.push(`Maintain your good academic performance with GPA of ${averages.avgGPA.toFixed(2)}.`)
+    recommendations.push(`Maintain your good academic performance with GPA of ${finalAverages.avgGPA.toFixed(2)}.`)
   }
 
   // Attendance recommendations
-  if (Number.parseFloat(overallAttendance.currentPercentage) < 75) {
+  if (Number.parseFloat(finalOverallAttendance.currentPercentage) < 75) {
     recommendations.push(
-      `Improve your overall attendance (currently ${overallAttendance.currentPercentage}%) to reach the minimum 75%.`,
+      `Improve your overall attendance (currently ${finalOverallAttendance.currentPercentage}%) to reach the minimum 75%.`,
     )
     recommendations.push(
-      `You need to attend ${overallAttendance.requiredClasses} more classes without missing any to reach 75%.`,
+      `You need to attend ${finalOverallAttendance.requiredClasses} more classes without missing any to reach 75%.`,
     )
 
     // Find subjects with low attendance
-    const lowAttendanceSubjects = attendanceData
+    const lowAttendanceSubjects = finalAttendanceData
       .filter((s) => s.happened > 0 && (s.attended / s.happened) * 100 < 75)
       .sort((a, b) => a.attended / a.happened - b.attended / b.happened)
       .slice(0, 3)
@@ -310,12 +377,12 @@ export const generatePDFReport = async (
   }
 
   // Exam recommendations
-  const subjectsWithRemainingExams = marksData.filter((s) => s.maxExams - s.exams.length > 0)
+  const subjectsWithRemainingExams = finalMarksData.filter((s) => s.maxExams - s.exams.length > 0)
   if (subjectsWithRemainingExams.length > 0) {
     recommendations.push(`Prepare well for upcoming exams in ${subjectsWithRemainingExams.length} subjects.`)
 
     // Find subjects that need high scores in remaining exams
-    const challengingSubjects = marksData
+    const challengingSubjects = finalMarksData
       .filter((s) => {
         const remainingExams = s.maxExams - s.exams.length
         if (remainingExams <= 0) return false
