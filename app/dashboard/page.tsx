@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect, useCallback } from "react"
+import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -20,13 +21,11 @@ import {
 import Link from "next/link"
 import { toast } from "sonner"
 import dynamic from "next/dynamic"
-import ThemeSelector from "./components/theme-selector"
-import { useOledTheme } from "../hooks/use-oled-theme"
 
 // Add imports for authentication
-import ProtectedRoute from "./components/protected-route"
-import UserProfile from "./components/user-profile"
-import { useAuth } from "./contexts/auth-context"
+import ProtectedRoute from "../components/protected-route"
+import UserProfile from "../components/user-profile"
+import { useAuth } from "../contexts/auth-context"
 import {
   getUserDocuments,
   addUserDocument,
@@ -35,10 +34,10 @@ import {
   deleteUserDocument,
   deleteAttendanceHistoryForSubject,
   deleteMarksHistoryForSubject,
-} from "./utils/user-data"
+} from "../utils/user-data"
 
 // Dynamically import the chart component
-const AttendanceTrendChart = dynamic(() => import("./components/attendance-trend-chart"), {
+const AttendanceTrendChart = dynamic(() => import("../components/attendance-trend-chart"), {
   ssr: false,
   loading: () => <div className="h-[350px] flex items-center justify-center">Loading chart...</div>,
 })
@@ -51,16 +50,12 @@ const App = () => {
   const [showSummary, setShowSummary] = useState(false)
   const [showAttendanceTrend, setShowAttendanceTrend] = useState(false)
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+  const { theme, setTheme } = useTheme()
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [deletingSubjectId, setDeletingSubjectId] = useState<string | null>(null)
 
-  // Use the OLED theme hook
-  useOledTheme()
-
-  // Add user from useAuth hook at the top of the component
   const { user } = useAuth()
 
-  // Update the fetchSubjects function to use user-specific data
   const fetchSubjects = async () => {
     if (!user) return
 
@@ -72,7 +67,6 @@ const App = () => {
     }
   }
 
-  // Update the useEffect to depend on user
   useEffect(() => {
     if (user) {
       fetchSubjects()
@@ -85,8 +79,6 @@ const App = () => {
 
     const currentPercentage = totalHappened > 0 ? ((totalAttended / totalHappened) * 100).toFixed(1) : 0
     const requiredClasses = totalHappened > 0 ? Math.ceil((0.75 * totalHappened - totalAttended) / 0.25) : 0
-
-    // Calculate how many classes can be missed while maintaining 75%
     const classesCanMiss = totalHappened > 0 ? Math.floor(totalAttended - 0.75 * totalHappened) : 0
 
     return {
@@ -101,13 +93,12 @@ const App = () => {
   const { currentPercentage, requiredClasses, totalAttended, totalHappened, classesCanMiss } =
     calculateCumulativeAttendance()
 
-  // Update the addSubject function to use user-specific data
   const addSubject = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault()
       if (!newSubject || newAttended < 0 || newHappened < 0 || !user) return
 
-      const goal = Math.ceil((newHappened * 3) / 4) // 75% goal
+      const goal = Math.ceil((newHappened * 3) / 4)
       try {
         const docRef = await addUserDocument(user, "subjects", {
           name: newSubject,
@@ -137,41 +128,31 @@ const App = () => {
     [newSubject, newAttended, newHappened, user],
   )
 
-  // Update the updateSubject function to use user-specific data
   const updateSubject = useCallback(
     async (id, updatedData) => {
       if (!user) return
 
       try {
-        // Get the current subject data to determine what changed
         const currentSubject = subjects.find((s) => s.id === id)
         if (!currentSubject) return
 
         await updateUserDocument(user, "subjects", id, updatedData)
         setSubjects((prev) => prev.map((subject) => (subject.id === id ? { ...subject, ...updatedData } : subject)))
 
-        // Record attendance history if attendance or happened changed
         if (updatedData.attended !== undefined || updatedData.happened !== undefined) {
-          const newAttended = updatedData.attended ?? currentSubject.attended
-          const newHappened = updatedData.happened ?? currentSubject.happened
-
-          // Determine if this was an attendance or absence
           if (updatedData.attended > currentSubject.attended && updatedData.happened > currentSubject.happened) {
-            // Student attended class
             await addAttendanceHistory(user, id, currentSubject.name, true, true)
           } else if (
             updatedData.happened &&
             updatedData.happened > currentSubject.happened &&
             updatedData.attended === undefined
           ) {
-            // Student missed class
             await addAttendanceHistory(user, id, currentSubject.name, false, true)
           } else if (updatedData.attended < currentSubject.attended && updatedData.happened < currentSubject.happened) {
-            // Undo operation - record the opposite of what was undone
             if (user && id) {
               try {
                 const { query, orderBy, limit, getDocs, collection, where } = await import("firebase/firestore")
-                const { db } = await import("./firebase")
+                const { db } = await import("../firebase")
                 const historyCollectionRef = collection(db, `users/${user.uid}/attendanceHistory`)
                 const q = query(
                   historyCollectionRef,
@@ -185,8 +166,6 @@ const App = () => {
                   const lastEntryDoc = querySnapshot.docs[0]
                   await deleteUserDocument(user, "attendanceHistory", lastEntryDoc.id)
                   console.log("Successfully deleted last attendance entry for undo:", lastEntryDoc.id)
-                } else {
-                  console.log("No attendance history found for subject to delete on undo:", id)
                 }
               } catch (error) {
                 console.error("Error during undo operation for attendance history:", error)
@@ -194,7 +173,6 @@ const App = () => {
             }
           }
 
-          // Trigger chart refresh
           setRefreshTrigger((prev) => prev + 1)
         }
       } catch (error) {
@@ -246,13 +224,12 @@ const App = () => {
     return Math.max(0, requiredAdditionalClasses)
   }, [])
 
-  // Update the handleGeneratePDF function
   const handleGeneratePDF = async () => {
     if (!user) return
 
     setIsGeneratingPDF(true)
     try {
-      const { generatePDFReport } = await import("./utils/pdfGenerator")
+      const { generatePDFReport } = await import("../utils/pdfGenerator")
       await generatePDFReport(user)
     } catch (error) {
       console.error("Error generating PDF:", error)
@@ -262,52 +239,90 @@ const App = () => {
     }
   }
 
-  // Wrap the entire component return with ProtectedRoute
   return (
     <ProtectedRoute>
-      <div className="w-[400px] md:w-[768px] lg:w-[1024px] p-4 md:p-6 lg:p-8 pb-20 md:pb-8 bg-gray-50 dark:bg-gray-900 oled:bg-black min-h-screen transition-colors duration-300">
-        {/* Update the header section to include UserProfile */}
-        <header className="flex justify-between items-center mb-6 pb-4 border-b border-gray-200 dark:border-gray-700 oled:border-gray-800">
-          <h1 className="text-2xl font-bold text-primary-600 dark:text-primary-400 oled:text-primary tracking-tight">
+      <div className="w-[400px] md:w-[768px] lg:w-[1024px] p-4 md:p-6 lg:p-8 pb-20 md:pb-8 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors duration-300">
+        <header className="flex justify-between items-center mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+          <h1 className="text-2xl font-bold text-primary-600 dark:text-primary-400 tracking-tight">
             GradeIT
-            <span className="ml-1 text-sm font-normal text-gray-500 dark:text-gray-400 oled:text-gray-400">v2.0</span>
+            <span className="ml-1 text-sm font-normal text-gray-500 dark:text-gray-400">v2.0</span>
           </h1>
 
           <div className="flex items-center space-x-3">
             <button
-              className="relative inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900 oled:bg-gray-900 text-primary-600 dark:text-primary-300 oled:text-primary hover:bg-primary-200 dark:hover:bg-primary-800 oled:hover:bg-gray-800 transition-colors duration-200 shadow-sm"
+              className="relative inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900 text-primary-600 dark:text-primary-300 hover:bg-primary-200 dark:hover:bg-primary-800 transition-colors duration-200 shadow-sm"
               onClick={handleGeneratePDF}
               disabled={isGeneratingPDF}
             >
               <span className="material-symbols-outlined">download</span>
             </button>
 
-            <ThemeSelector />
+            <div className="flex items-center bg-white dark:bg-gray-800 rounded-full p-1 shadow-sm">
+              <button
+                className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  theme === "light" ? "bg-primary-100" : ""
+                }`}
+                onClick={() => setTheme("light")}
+              >
+                <span className="material-symbols-outlined text-yellow-500">light_mode</span>
+              </button>
+              <button
+                className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  theme === "dark" ? "bg-primary-100" : ""
+                }`}
+                onClick={() => setTheme("dark")}
+              >
+                <span className="material-symbols-outlined text-indigo-400">dark_mode</span>
+              </button>
+            </div>
 
             <UserProfile />
           </div>
         </header>
 
-        {/* Main Content */}
+        {user && localStorage.getItem("demoUser") && (
+          <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-3 rounded-lg mb-6 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <span className="material-symbols-outlined mr-2">info</span>
+                <div>
+                  <p className="font-medium text-sm">Demo Mode Active</p>
+                  <p className="text-xs opacity-90">You're viewing sample data. Changes won't be saved permanently.</p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-white/20 border-white/30 text-white hover:bg-white/30"
+                onClick={() => {
+                  localStorage.removeItem("demoUser")
+                  window.location.href = "/login"
+                }}
+              >
+                Exit Demo
+              </Button>
+            </div>
+          </div>
+        )}
+
         <main className="space-y-6">
-          {/* Attendance Section */}
-          <section className="bg-white dark:bg-gray-800 oled:bg-gray-950 rounded-xl p-4 shadow-sm transition-transform duration-200 hover:shadow-md hover:-translate-y-1">
+          <section className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm transition-transform duration-200 hover:shadow-md hover:-translate-y-1">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-medium">Current Attendance</h2>
               <span
                 className={`text-2xl font-bold ${
                   Number(currentPercentage) >= 75
-                    ? "text-green-600 dark:text-green-400 oled:text-green-400"
+                    ? "text-green-600 dark:text-green-400"
                     : Number(currentPercentage) >= 72
-                      ? "text-amber-600 dark:text-amber-400 oled:text-amber-400"
-                      : "text-red-600 dark:text-red-400 oled:text-red-400"
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-red-600 dark:text-red-400"
                 }`}
               >
                 {currentPercentage}%
               </span>
             </div>
 
-            <div className="w-full bg-gray-200 dark:bg-gray-700 oled:bg-gray-800 rounded-full h-2.5 mb-2 relative">
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-2 relative">
               <div
                 className={`h-2.5 rounded-full ${
                   Number(currentPercentage) >= 75
@@ -320,39 +335,31 @@ const App = () => {
                   width: `${Math.min(Number(currentPercentage), 100)}%`,
                 }}
               ></div>
-              {/* Attendance goal marker */}
-              <div
-                className="absolute top-0 bottom-0 w-0.5 bg-primary-600 dark:bg-primary-400 oled:bg-primary"
-                style={{ left: "75%" }}
-              >
-                <div className="absolute -top-6 -translate-x-1/2 text-xs text-primary-600 dark:text-primary-400 oled:text-primary whitespace-nowrap">
+              <div className="absolute top-0 bottom-0 w-0.5 bg-primary-600 dark:bg-primary-400" style={{ left: "75%" }}>
+                <div className="absolute -top-6 -translate-x-1/2 text-xs text-primary-600 dark:text-primary-400 whitespace-nowrap">
                   Goal: 75%
                 </div>
               </div>
             </div>
 
             <div className="flex justify-between text-sm">
-              <div className="text-gray-500 dark:text-gray-400 oled:text-gray-400">
+              <div className="text-gray-500 dark:text-gray-400">
                 <span>{totalAttended} Present</span>
                 <span className="mx-1">•</span>
                 <span>{totalHappened - totalAttended} Absent</span>
               </div>
               <div className="font-medium">
                 {Number(currentPercentage) >= 75 ? (
-                  <span className="text-green-600 dark:text-green-400 oled:text-green-400">
-                    Can miss {classesCanMiss} more classes
-                  </span>
+                  <span className="text-green-600 dark:text-green-400">Can miss {classesCanMiss} more classes</span>
                 ) : (
-                  <span className="text-amber-600 dark:text-amber-400 oled:text-amber-400">
-                    Need {requiredClasses} more classes
-                  </span>
+                  <span className="text-amber-600 dark:text-amber-400">Need {requiredClasses} more classes</span>
                 )}
               </div>
             </div>
 
             <div className="mt-3 flex justify-end">
               <button
-                className="text-primary-600 dark:text-primary-400 oled:text-primary text-sm flex items-center"
+                className="text-primary-600 dark:text-primary-400 text-sm flex items-center"
                 onClick={() => setShowAttendanceTrend(true)}
               >
                 <span className="material-symbols-outlined text-sm mr-1">trending_up</span>
@@ -361,42 +368,37 @@ const App = () => {
             </div>
           </section>
 
-          {/* Attendance Trend Sheet */}
           <Sheet open={showAttendanceTrend} onOpenChange={setShowAttendanceTrend}>
-            <SheetContent
-              side="bottom"
-              className="h-[80vh] p-0 overflow-hidden flex flex-col bg-white dark:bg-gray-800 oled:bg-black border-gray-200 dark:border-gray-700 oled:border-gray-800"
-            >
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700 oled:border-gray-800">
+            <SheetContent side="bottom" className="h-[80vh] p-0 overflow-hidden flex flex-col">
+              <div className="p-4 border-b">
                 <SheetHeader className="text-left">
                   <SheetTitle className="font-sans">Attendance Trends</SheetTitle>
                   <SheetDescription>Visual analysis of your attendance over time</SheetDescription>
                 </SheetHeader>
               </div>
 
-              {/* Main scrollable content */}
               <div className="flex-1 overflow-y-auto p-4">
-                <div className="bg-white dark:bg-gray-800 oled:bg-gray-950 rounded-xl shadow-md p-4 mb-6">
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 mb-6">
                   <AttendanceTrendChart subjects={subjects} refreshTrigger={refreshTrigger} />
                 </div>
 
-                <div className="bg-white dark:bg-gray-800 oled:bg-gray-950 rounded-xl shadow-md p-4">
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4">
                   <h3 className="text-lg font-medium mb-3">Attendance Insights</h3>
                   <div className="space-y-3">
                     {Number(currentPercentage) >= 75 ? (
-                      <div className="flex items-center text-green-600 dark:text-green-400 oled:text-green-400">
+                      <div className="flex items-center text-green-600 dark:text-green-400">
                         <span className="material-symbols-outlined mr-2">check_circle</span>
                         <span>Your overall attendance is above the required 75% threshold.</span>
                       </div>
                     ) : (
-                      <div className="flex items-center text-amber-600 dark:text-amber-400 oled:text-amber-400">
+                      <div className="flex items-center text-amber-600 dark:text-amber-400">
                         <span className="material-symbols-outlined mr-2">warning</span>
                         <span>Your overall attendance is below the required 75% threshold.</span>
                       </div>
                     )}
 
                     {subjects.filter((s) => (s.attended / s.happened) * 100 < 75).length > 0 && (
-                      <div className="flex items-center text-red-600 dark:text-red-400 oled:text-red-400">
+                      <div className="flex items-center text-red-600 dark:text-red-400">
                         <span className="material-symbols-outlined mr-2">error</span>
                         <span>
                           {subjects.filter((s) => (s.attended / s.happened) * 100 < 75).length} subjects have attendance
@@ -406,7 +408,7 @@ const App = () => {
                     )}
 
                     {Number(currentPercentage) < 75 && (
-                      <div className="bg-primary-100 dark:bg-primary-900 oled:bg-gray-900 p-3 rounded-lg mt-4">
+                      <div className="bg-primary-100 dark:bg-primary-900 p-3 rounded-lg mt-4">
                         <p className="font-medium mb-1">Recommendation</p>
                         <p className="text-sm">
                           To reach 75% attendance, you need to attend {requiredClasses} more classes without missing
@@ -420,21 +422,20 @@ const App = () => {
             </SheetContent>
           </Sheet>
 
-          {/* Action Buttons */}
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <div
-              className="flex flex-col items-center justify-center bg-white dark:bg-gray-800 oled:bg-gray-950 rounded-xl p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-700 oled:hover:bg-gray-900 hover:-translate-y-1 group"
+              className="flex flex-col items-center justify-center bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-700 hover:-translate-y-1 group"
               onClick={handleGeneratePDF}
             >
-              <span className="material-symbols-outlined text-2xl text-primary-500 oled:text-primary mb-2 group-hover:scale-110 transition-transform">
+              <span className="material-symbols-outlined text-2xl text-primary-500 mb-2 group-hover:scale-110 transition-transform">
                 download
               </span>
               <span className="text-sm font-medium">Summary Download</span>
             </div>
 
             <Link href="/marks">
-              <div className="flex flex-col items-center justify-center bg-white dark:bg-gray-800 oled:bg-gray-950 rounded-xl p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-700 oled:hover:bg-gray-900 hover:-translate-y-1 group">
-                <span className="material-symbols-outlined text-2xl text-primary-500 oled:text-primary mb-2 group-hover:scale-110 transition-transform">
+              <div className="flex flex-col items-center justify-center bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-700 hover:-translate-y-1 group">
+                <span className="material-symbols-outlined text-2xl text-primary-500 mb-2 group-hover:scale-110 transition-transform">
                   grade
                 </span>
                 <span className="text-sm font-medium">Marks Section</span>
@@ -442,8 +443,8 @@ const App = () => {
             </Link>
 
             <Link href="/trends">
-              <div className="flex flex-col items-center justify-center bg-white dark:bg-gray-800 oled:bg-gray-950 rounded-xl p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-700 oled:hover:bg-gray-900 hover:-translate-y-1 group">
-                <span className="material-symbols-outlined text-2xl text-primary-500 oled:text-primary mb-2 group-hover:scale-110 transition-transform">
+              <div className="flex flex-col items-center justify-center bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-700 hover:-translate-y-1 group">
+                <span className="material-symbols-outlined text-2xl text-primary-500 mb-2 group-hover:scale-110 transition-transform">
                   trending_up
                 </span>
                 <span className="text-sm font-medium">Trends & Analytics</span>
@@ -452,14 +453,14 @@ const App = () => {
 
             <Sheet>
               <SheetTrigger asChild>
-                <div className="flex flex-col items-center justify-center bg-white dark:bg-gray-800 oled:bg-gray-950 rounded-xl p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-700 oled:hover:bg-gray-900 hover:-translate-y-1 group">
-                  <span className="material-symbols-outlined text-2xl text-primary-500 oled:text-primary mb-2 group-hover:scale-110 transition-transform">
+                <div className="flex flex-col items-center justify-center bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-700 hover:-translate-y-1 group">
+                  <span className="material-symbols-outlined text-2xl text-primary-500 mb-2 group-hover:scale-110 transition-transform">
                     add_circle
                   </span>
                   <span className="text-sm font-medium">Add Subject</span>
                 </div>
               </SheetTrigger>
-              <SheetContent className="bg-white dark:bg-gray-800 oled:bg-black border-gray-200 dark:border-gray-700 oled:border-gray-800">
+              <SheetContent>
                 <SheetHeader>
                   <SheetTitle className="font-sans">Add New Subject</SheetTitle>
                   <SheetDescription>Enter the details of the new subject you want to track.</SheetDescription>
@@ -471,7 +472,6 @@ const App = () => {
                     value={newSubject}
                     onChange={(e) => setNewSubject(e.target.value)}
                     required
-                    className="bg-white dark:bg-gray-800 oled:bg-gray-950 border-gray-200 dark:border-gray-700 oled:border-gray-800"
                   />
                   <Input
                     type="number"
@@ -479,7 +479,6 @@ const App = () => {
                     value={newAttended}
                     onChange={(e) => setNewAttended(Number.parseInt(e.target.value, 10))}
                     required
-                    className="bg-white dark:bg-gray-800 oled:bg-gray-950 border-gray-200 dark:border-gray-700 oled:border-gray-800"
                   />
                   <Input
                     type="number"
@@ -487,7 +486,6 @@ const App = () => {
                     value={newHappened}
                     onChange={(e) => setNewHappened(Number.parseInt(e.target.value, 10))}
                     required
-                    className="bg-white dark:bg-gray-800 oled:bg-gray-950 border-gray-200 dark:border-gray-700 oled:border-gray-800"
                   />
                   <Button type="submit" className="w-full">
                     Add Subject
@@ -497,64 +495,6 @@ const App = () => {
             </Sheet>
           </div>
 
-          {/* Progress Summary */}
-          {showSummary && (
-            <details
-              className="bg-white dark:bg-gray-800 oled:bg-gray-950 rounded-xl overflow-hidden shadow-sm group transition-shadow duration-200 hover:shadow-md"
-              open
-            >
-              <summary className="flex justify-between items-center p-4 cursor-pointer">
-                <h2 className="text-lg font-medium">Subjects Summary</h2>
-                <span className="material-symbols-outlined transition-transform duration-300 group-open:rotate-180">
-                  expand_more
-                </span>
-              </summary>
-
-              <div className="p-4 pt-0 space-y-4 border-t border-gray-100 dark:border-gray-700 oled:border-gray-800">
-                {subjects.map((subject) => {
-                  const currentPercentage =
-                    subject.happened > 0 ? ((subject.attended / subject.happened) * 100).toFixed(1) : 0
-                  const neededClasses = calculateNeededClasses(subject)
-                  const goalPercentage = subject.customGoalPercentage || 75
-
-                  return (
-                    <div key={subject.id} className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>{subject.name}</span>
-                        <span className="font-medium">
-                          {subject.attended}/{subject.happened} ({currentPercentage}%)
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 oled:bg-gray-800 rounded-full h-2 relative">
-                        <div
-                          className={`h-2 rounded-full ${
-                            Number(currentPercentage) >= goalPercentage
-                              ? "bg-green-500"
-                              : Number(currentPercentage) >= goalPercentage - 3
-                                ? "bg-amber-500"
-                                : "bg-red-500"
-                          }`}
-                          style={{
-                            width: `${Math.min(Number(currentPercentage), 100)}%`,
-                          }}
-                        ></div>
-                        {/* Goal marker */}
-                        <div
-                          className="absolute top-0 bottom-0 w-0.5 bg-primary-600/50 dark:bg-primary-400/50 oled:bg-primary/50"
-                          style={{ left: `${goalPercentage}%` }}
-                        ></div>
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 oled:text-gray-400">
-                        Goal: {goalPercentage}% • Classes Needed: {neededClasses}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </details>
-          )}
-
-          {/* Subject Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {subjects.map((subject) => {
               const neededClasses = calculateNeededClasses(subject)
@@ -562,7 +502,6 @@ const App = () => {
                 subject.happened > 0 ? ((subject.attended / subject.happened) * 100).toFixed(1) : 0
               const goalPercentage = subject.customGoalPercentage || 75
 
-              // Generate a gradient color based on the subject name for visual variety
               const colors = [
                 "from-primary-500/90 to-indigo-600/90",
                 "from-amber-500 to-orange-600",
@@ -577,13 +516,12 @@ const App = () => {
               return (
                 <div
                   key={subject.id}
-                  className="bg-white dark:bg-gray-800 oled:bg-gray-950 rounded-xl overflow-hidden shadow-sm transition-all duration-200 hover:shadow-lg hover:-translate-y-1"
+                  className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-sm transition-all duration-200 hover:shadow-lg hover:-translate-y-1"
                 >
                   <div
                     className={`h-28 bg-gradient-to-r ${gradientColor} p-4 flex flex-col justify-between text-white`}
                   >
                     <div className="flex justify-between items-start">
-                      {/* Fix for long subject names */}
                       <div className="flex-1 mr-2">
                         <h3 className="font-bold truncate">{subject.name}</h3>
                       </div>
@@ -604,29 +542,26 @@ const App = () => {
                   <div className="p-4">
                     <div className="flex justify-between mb-3">
                       <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 oled:text-gray-400">Current</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Current</p>
                         <p
                           className={`text-xl font-bold ${
                             Number(currentPercentage) >= goalPercentage
-                              ? "text-green-600 dark:text-green-400 oled:text-green-400"
+                              ? "text-green-600 dark:text-green-400"
                               : Number(currentPercentage) >= goalPercentage - 3
-                                ? "text-amber-600 dark:text-amber-400 oled:text-amber-400"
-                                : "text-red-600 dark:text-red-400 oled:text-red-400"
+                                ? "text-amber-600 dark:text-amber-400"
+                                : "text-red-600 dark:text-red-400"
                           }`}
                         >
                           {currentPercentage}%
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm text-gray-500 dark:text-gray-400 oled:text-gray-400">Needed Classes</p>
-                        <p className="text-xl font-bold text-primary-600 dark:text-primary-400 oled:text-primary">
-                          {neededClasses}
-                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Needed Classes</p>
+                        <p className="text-xl font-bold text-primary-600 dark:text-primary-400">{neededClasses}</p>
                       </div>
                     </div>
 
-                    {/* Progress bar with goal marker */}
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 oled:bg-gray-800 rounded-full h-2 mb-4 relative">
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-4 relative">
                       <div
                         className={`h-2 rounded-full ${
                           Number(currentPercentage) >= goalPercentage
@@ -639,9 +574,8 @@ const App = () => {
                           width: `${Math.min(Number(currentPercentage), 100)}%`,
                         }}
                       ></div>
-                      {/* Goal marker */}
                       <div
-                        className="absolute top-0 bottom-0 w-0.5 bg-primary-600/50 dark:bg-primary-400/50 oled:bg-primary/50"
+                        className="absolute top-0 bottom-0 w-0.5 bg-primary-600/50 dark:bg-primary-400/50"
                         style={{ left: `${goalPercentage}%` }}
                       ></div>
                     </div>
@@ -689,12 +623,12 @@ const App = () => {
                     <div className="mt-4 flex justify-end">
                       <Popover>
                         <PopoverTrigger asChild>
-                          <button className="text-primary-600 dark:text-primary-400 oled:text-primary text-sm flex items-center">
+                          <button className="text-primary-600 dark:text-primary-400 text-sm flex items-center">
                             <span className="material-symbols-outlined text-sm mr-1">settings</span>
                             Set Goal
                           </button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-80 bg-white dark:bg-gray-800 oled:bg-gray-950 border-gray-200 dark:border-gray-700 oled:border-gray-800">
+                        <PopoverContent className="w-80">
                           <div className="space-y-4">
                             <h4 className="font-medium">Attendance Goal</h4>
                             <div className="space-y-2">
@@ -714,9 +648,9 @@ const App = () => {
                                     customGoalPercentage: value,
                                   })
                                 }}
-                                className="w-full h-2 bg-gray-200 dark:bg-gray-700 oled:bg-gray-800 rounded-full appearance-none cursor-pointer"
+                                className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full appearance-none cursor-pointer"
                               />
-                              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 oled:text-gray-400">
+                              <div className="flex justify-between text-xs text-gray-500">
                                 <span>70%</span>
                                 <span>75%</span>
                                 <span>80%</span>
@@ -743,7 +677,7 @@ const App = () => {
                                   )}
                                 </Button>
                               </AlertDialogTrigger>
-                              <AlertDialogContent className="bg-white dark:bg-gray-800 oled:bg-gray-950 border-gray-200 dark:border-gray-700 oled:border-gray-800">
+                              <AlertDialogContent>
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                   <AlertDialogDescription>
@@ -775,21 +709,18 @@ const App = () => {
             })}
           </div>
 
-          {/* Add Subject Button (for empty state) */}
           {subjects.length === 0 && (
             <Sheet>
               <SheetTrigger asChild>
-                <div className="bg-white dark:bg-gray-800 oled:bg-gray-950 rounded-xl p-6 shadow-sm text-center cursor-pointer hover:shadow-md transition-shadow">
-                  <span className="material-symbols-outlined text-4xl text-primary-500 oled:text-primary mb-2">
-                    add_circle
-                  </span>
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm text-center cursor-pointer hover:shadow-md transition-shadow">
+                  <span className="material-symbols-outlined text-4xl text-primary-500 mb-2">add_circle</span>
                   <h3 className="text-lg font-medium">Add Your First Subject</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 oled:text-gray-400 mt-2">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                     Start tracking your attendance by adding a subject
                   </p>
                 </div>
               </SheetTrigger>
-              <SheetContent className="bg-white dark:bg-gray-800 oled:bg-black border-gray-200 dark:border-gray-700 oled:border-gray-800">
+              <SheetContent>
                 <SheetHeader>
                   <SheetTitle className="font-sans">Add New Subject</SheetTitle>
                   <SheetDescription>Enter the details of the new subject you want to track.</SheetDescription>
@@ -801,7 +732,6 @@ const App = () => {
                     value={newSubject}
                     onChange={(e) => setNewSubject(e.target.value)}
                     required
-                    className="bg-white dark:bg-gray-800 oled:bg-gray-950 border-gray-200 dark:border-gray-700 oled:border-gray-800"
                   />
                   <Input
                     type="number"
@@ -809,7 +739,6 @@ const App = () => {
                     value={newAttended}
                     onChange={(e) => setNewAttended(Number.parseInt(e.target.value, 10))}
                     required
-                    className="bg-white dark:bg-gray-800 oled:bg-gray-950 border-gray-200 dark:border-gray-700 oled:border-gray-800"
                   />
                   <Input
                     type="number"
@@ -817,7 +746,6 @@ const App = () => {
                     value={newHappened}
                     onChange={(e) => setNewHappened(Number.parseInt(e.target.value, 10))}
                     required
-                    className="bg-white dark:bg-gray-800 oled:bg-gray-950 border-gray-200 dark:border-gray-700 oled:border-gray-800"
                   />
                   <Button type="submit" className="w-full">
                     Add Subject
@@ -828,23 +756,22 @@ const App = () => {
           )}
         </main>
 
-        {/* Bottom Navigation */}
-        <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 oled:bg-black py-2 px-6 border-t border-gray-200 dark:border-gray-700 oled:border-gray-800 md:hidden z-10">
+        <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 py-2 px-6 border-t border-gray-200 dark:border-gray-700 md:hidden z-10">
           <div className="flex justify-between items-center">
-            <div className="flex flex-col items-center text-primary-600 dark:text-primary-400 oled:text-primary">
+            <div className="flex flex-col items-center text-primary-600 dark:text-primary-400">
               <span className="material-symbols-outlined">home</span>
               <span className="text-xs mt-1">Home</span>
             </div>
 
             <Link href="/marks">
-              <div className="flex flex-col items-center text-gray-600 dark:text-gray-400 oled:text-gray-400">
+              <div className="flex flex-col items-center text-gray-600 dark:text-gray-400">
                 <span className="material-symbols-outlined">grade</span>
                 <span className="text-xs mt-1">Marks</span>
               </div>
             </Link>
 
             <Link href="/trends">
-              <div className="flex flex-col items-center text-gray-600 dark:text-gray-400 oled:text-gray-400">
+              <div className="flex flex-col items-center text-gray-600 dark:text-gray-400">
                 <span className="material-symbols-outlined">trending_up</span>
                 <span className="text-xs mt-1">Trends</span>
               </div>
@@ -852,12 +779,12 @@ const App = () => {
 
             <Sheet>
               <SheetTrigger asChild>
-                <div className="flex flex-col items-center text-gray-600 dark:text-gray-400 oled:text-gray-400">
+                <div className="flex flex-col items-center text-gray-600 dark:text-gray-400">
                   <span className="material-symbols-outlined">add_circle</span>
                   <span className="text-xs mt-1">Add</span>
                 </div>
               </SheetTrigger>
-              <SheetContent className="bg-white dark:bg-gray-800 oled:bg-black border-gray-200 dark:border-gray-700 oled:border-gray-800">
+              <SheetContent>
                 <SheetHeader>
                   <SheetTitle className="font-sans">Add New Subject</SheetTitle>
                   <SheetDescription>Enter the details of the new subject you want to track.</SheetDescription>
@@ -869,7 +796,6 @@ const App = () => {
                     value={newSubject}
                     onChange={(e) => setNewSubject(e.target.value)}
                     required
-                    className="bg-white dark:bg-gray-800 oled:bg-gray-950 border-gray-200 dark:border-gray-700 oled:border-gray-800"
                   />
                   <Input
                     type="number"
@@ -877,7 +803,6 @@ const App = () => {
                     value={newAttended}
                     onChange={(e) => setNewAttended(Number.parseInt(e.target.value, 10))}
                     required
-                    className="bg-white dark:bg-gray-800 oled:bg-gray-950 border-gray-200 dark:border-gray-700 oled:border-gray-800"
                   />
                   <Input
                     type="number"
@@ -885,7 +810,6 @@ const App = () => {
                     value={newHappened}
                     onChange={(e) => setNewHappened(Number.parseInt(e.target.value, 10))}
                     required
-                    className="bg-white dark:bg-gray-800 oled:bg-gray-950 border-gray-200 dark:border-gray-700 oled:border-gray-800"
                   />
                   <Button type="submit" className="w-full">
                     Add Subject

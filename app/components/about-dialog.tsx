@@ -22,8 +22,8 @@ export default function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
         <div className="space-y-4">
           {/* App Info */}
           <div className="text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full overflow-hidden bg-white shadow-lg">
-              <img src="/icon-512.png" alt="GradeIT Logo" className="w-14 h-14 object-contain" />
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-primary-500 to-primary-600 rounded-full mb-4">
+              <span className="material-symbols-outlined text-2xl text-white">school</span>
             </div>
             <h3 className="text-lg font-semibold">GradeIT v2.0</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -83,7 +83,7 @@ export default function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
           {/* Version Info */}
           <div className="text-center pt-2 border-t border-gray-200 dark:border-gray-700">
             <p className="text-xs text-gray-500 dark:text-gray-400">Made with ❤️ for students everywhere</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">© 2024 Kevin Tandon.</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">© 2024 Kevin Tandon. All rights reserved.</p>
           </div>
         </div>
       </DialogContent>

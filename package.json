@@ -9,9 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@auth/core": "latest",
-    "@capacitor-firebase/authentication": "latest",
-    "@capacitor/core": "latest",
+    "@capacitor/cli": "latest",
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-accordion": "1.2.2",
     "@radix-ui/react-alert-dialog": "1.1.4",
@@ -52,9 +50,7 @@
     "jspdf": "latest",
     "lucide-react": "^0.454.0",
     "next": "15.2.4",
-    "next-auth": "latest",
     "next-themes": "latest",
-    "nodemailer": "latest",
     "react": "^19",
     "react-apexcharts": "latest",
     "react-day-picker": "8.10.1",

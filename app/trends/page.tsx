@@ -1,54 +1,47 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { useTheme } from "next-themes";
-import Link from "next/link";
+import { useState, useEffect } from "react"
+import { useTheme } from "next-themes"
+import Link from "next/link"
 
-import ProtectedRoute from "../components/protected-route";
-import UserProfile from "../components/user-profile";
-import { useAuth } from "../contexts/auth-context";
-import { getUserDocuments } from "../utils/user-data";
-import AttendanceTrendChart from "../components/attendance-trend-chart";
-import MarksTrendChart from "../components/marks-trend-chart";
+import ProtectedRoute from "../components/protected-route"
+import UserProfile from "../components/user-profile"
+import { useAuth } from "../contexts/auth-context"
+import { getUserDocuments } from "../utils/user-data"
+import AttendanceTrendChart from "../components/attendance-trend-chart"
+import MarksTrendChart from "../components/marks-trend-chart"
 
 const TrendsPage = () => {
-  const [subjects, setSubjects] = useState([]);
-  const [subjectsMarks, setSubjectsMarks] = useState([]);
-  const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<"attendance" | "marks">(
-    "attendance"
-  );
-  const { theme, setTheme } = useTheme();
-  const { user } = useAuth();
+  const [subjects, setSubjects] = useState([])
+  const [subjectsMarks, setSubjectsMarks] = useState([])
+  const [mounted, setMounted] = useState(false)
+  const [activeTab, setActiveTab] = useState<"attendance" | "marks">("attendance")
+  const { theme, setTheme } = useTheme()
+  const { user } = useAuth()
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!user) return;
+      if (!user) return
 
       try {
         const [attendanceData, marksData] = await Promise.all([
           getUserDocuments(user, "subjects"),
           getUserDocuments(user, "marks"),
-        ]);
-        setSubjects(attendanceData);
-        setSubjectsMarks(marksData);
+        ])
+        setSubjects(attendanceData)
+        setSubjectsMarks(marksData)
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error fetching data:", error)
       }
-    };
+    }
 
     if (user) {
-      fetchData();
+      fetchData()
     }
-    setMounted(true);
-  }, [user]);
+    setMounted(true)
+  }, [user])
 
-  if (!mounted)
-    return (
-      <div className="flex items-center justify-center h-screen">
-        Loading...
-      </div>
-    );
+  if (!mounted) return <div className="flex items-center justify-center h-screen">Loading...</div>
 
   return (
     <ProtectedRoute>
@@ -63,33 +56,23 @@ const TrendsPage = () => {
             </Link>
             <h1 className="text-2xl font-bold text-primary-600 dark:text-primary-400 tracking-tight">
               GradeIT
-              <span className="ml-1 text-sm font-normal text-gray-500 dark:text-gray-400">
-                Trends & Analytics
-              </span>
+              <span className="ml-1 text-sm font-normal text-gray-500 dark:text-gray-400">Trends & Analytics</span>
             </h1>
           </div>
 
           <div className="flex items-center space-x-3">
             <div className="flex items-center bg-white dark:bg-gray-800 rounded-full p-1 shadow-sm">
               <button
-                className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  theme === "light" ? "bg-primary-100" : ""
-                }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center ${theme === "light" ? "bg-primary-100" : ""}`}
                 onClick={() => setTheme("light")}
               >
-                <span className="material-symbols-outlined text-yellow-500">
-                  light_mode
-                </span>
+                <span className="material-symbols-outlined text-yellow-500">light_mode</span>
               </button>
               <button
-                className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  theme === "dark" ? "bg-primary-100" : ""
-                }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center ${theme === "dark" ? "bg-primary-100" : ""}`}
                 onClick={() => setTheme("dark")}
               >
-                <span className="material-symbols-outlined text-indigo-400">
-                  dark_mode
-                </span>
+                <span className="material-symbols-outlined text-indigo-400">dark_mode</span>
               </button>
             </div>
 
@@ -107,9 +90,7 @@ const TrendsPage = () => {
                 : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
             }`}
           >
-            <span className="material-symbols-outlined mr-2">
-              event_available
-            </span>
+            <span className="material-symbols-outlined mr-2">event_available</span>
             Attendance Trends
           </button>
           <button
@@ -143,22 +124,16 @@ const TrendsPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
               <h3 className="text-lg font-semibold mb-4 flex items-center">
-                <span className="material-symbols-outlined mr-2 text-primary-600">
-                  event_available
-                </span>
+                <span className="material-symbols-outlined mr-2 text-primary-600">event_available</span>
                 Attendance Overview
               </h3>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">
-                    Total Subjects
-                  </span>
+                  <span className="text-gray-600 dark:text-gray-400">Total Subjects</span>
                   <span className="font-semibold">{subjects.length}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">
-                    Overall Attendance
-                  </span>
+                  <span className="text-gray-600 dark:text-gray-400">Overall Attendance</span>
                   <span className="font-semibold">
                     {subjects.length > 0
                       ? (
@@ -171,15 +146,9 @@ const TrendsPage = () => {
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">
-                    Above 75%
-                  </span>
+                  <span className="text-gray-600 dark:text-gray-400">Above 75%</span>
                   <span className="font-semibold text-green-600">
-                    {
-                      subjects.filter(
-                        (s) => (s.attended / s.happened) * 100 >= 75
-                      ).length
-                    }
+                    {subjects.filter((s) => (s.attended / s.happened) * 100 >= 75).length}
                   </span>
                 </div>
               </div>
@@ -187,38 +156,27 @@ const TrendsPage = () => {
 
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
               <h3 className="text-lg font-semibold mb-4 flex items-center">
-                <span className="material-symbols-outlined mr-2 text-primary-600">
-                  grade
-                </span>
+                <span className="material-symbols-outlined mr-2 text-primary-600">grade</span>
                 Marks Overview
               </h3>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">
-                    Total Subjects
-                  </span>
+                  <span className="text-gray-600 dark:text-gray-400">Total Subjects</span>
                   <span className="font-semibold">{subjectsMarks.length}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">
-                    Average GPA
-                  </span>
+                  <span className="text-gray-600 dark:text-gray-400">Average GPA</span>
                   <span className="font-semibold">
                     {subjectsMarks.length > 0
                       ? (
-                          subjectsMarks.reduce(
-                            (sum, s) => sum + s.gradePoint * s.credits,
-                            0
-                          ) /
+                          subjectsMarks.reduce((sum, s) => sum + s.gradePoint * s.credits, 0) /
                           subjectsMarks.reduce((sum, s) => sum + s.credits, 0)
                         ).toFixed(2)
                       : "0.00"}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">
-                    Above 8.0 GPA
-                  </span>
+                  <span className="text-gray-600 dark:text-gray-400">Above 8.0 GPA</span>
                   <span className="font-semibold text-green-600">
                     {subjectsMarks.filter((s) => s.gradePoint >= 8).length}
                   </span>
@@ -260,7 +218,7 @@ const TrendsPage = () => {
         </nav>
       </div>
     </ProtectedRoute>
-  );
-};
+  )
+}
 
-export default TrendsPage;
+export default TrendsPage
