@@ -1,149 +1,110 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { useAuth } from "../contexts/auth-context";
-import { Button } from "@/components/ui/button";
-import SettingsDialog from "./settings-dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import AboutDialog from "./about-dialog";
+import { ThemeToggle } from "@/app/components/theme-toggle"
 
-export default function UserProfile() {
-  const { user, signOut } = useAuth();
-  const [isSigningOut, setIsSigningOut] = useState(false);
-  const [showAbout, setShowAbout] = useState(false);
-  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useSession } from "next-auth/react"
+import Link from "next/link"
+import { useEffect, useState } from "react"
 
-  const handleSignOut = async () => {
-    try {
-      setIsSigningOut(true);
-      await signOut();
-    } catch (error) {
-      console.error("Error signing out:", error);
-    } finally {
-      setIsSigningOut(false);
+interface User {
+  id: string
+  name: string
+  email: string
+  image: string
+  createdAt: Date
+  updatedAt: Date
+  accounts: any[]
+  sessions: any[]
+}
+
+export function UserProfile() {
+  const { data: session, status } = useSession()
+  const [user, setUser] = useState<User | null>(null)
+
+  useEffect(() => {
+    if (session?.user) {
+      setUser(session.user as User)
     }
-  };
+  }, [session])
 
-  if (!user) return null;
+  if (status === "loading") {
+    return (
+      <div className="flex flex-col gap-4">
+        <Skeleton className="h-12 w-12 rounded-full" />
+        <Skeleton className="h-4 w-[250px]" />
+        <Skeleton className="h-4 w-[200px]" />
+      </div>
+    )
+  }
 
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((word) => word[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
+  if (!session?.user) {
+    return (
+      <div>
+        <p>Not signed in</p>
+      </div>
+    )
+  }
 
   return (
-    <>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-            <Avatar className="h-10 w-10">
-              <AvatarImage
-                src={user.photoURL || ""}
-                alt={user.displayName || "User"}
-              />
-              <AvatarFallback className="bg-primary-100 dark:bg-primary-900 text-primary-600 dark:text-primary-300">
-                {getInitials(user.displayName || user.email || "U")}
-              </AvatarFallback>
-            </Avatar>
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-80" align="end">
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3">
-              <Avatar className="h-12 w-12">
-                <AvatarImage
-                  src={user.photoURL || ""}
-                  alt={user.displayName || "User"}
-                />
-                <AvatarFallback className="bg-primary-100 dark:bg-primary-900 text-primary-600 dark:text-primary-300">
-                  {getInitials(user.displayName || user.email || "U")}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                  {user.displayName || "User"}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                  {user.email}
-                </p>
-              </div>
-            </div>
-
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-              <div className="space-y-2">
-                <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                  <span className="material-symbols-outlined text-sm mr-2">
-                    verified_user
-                  </span>
-                  Account verified
-                </div>
-                <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                  <span className="material-symbols-outlined text-sm mr-2">
-                    cloud_sync
-                  </span>
-                  Data synced
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-2">
-              <Button
-                onClick={() => setShowSettingsDialog(true)}
-                variant="ghost"
-                className="w-full justify-start"
-              >
-                <span className="material-symbols-outlined text-sm mr-2">
-                  settings
-                </span>
-                Settings
-              </Button>
-              <Button
-                onClick={() => setShowAbout(true)}
-                variant="ghost"
-                className="w-full justify-start"
-              >
-                <span className="material-symbols-outlined text-sm mr-2">
-                  info
-                </span>
-                About GradeIT
-              </Button>
-
-              <Button
-                onClick={handleSignOut}
-                disabled={isSigningOut}
-                variant="outline"
-                className="w-full"
-              >
-                {isSigningOut ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
-                    Signing out...
-                  </div>
-                ) : (
-                  <div className="flex items-center">
-                    <span className="material-symbols-outlined text-sm mr-2">
-                      logout
-                    </span>
-                    Sign out
-                  </div>
-                )}
-              </Button>
-            </div>
+    <div className="grid gap-6">
+      <div className="flex flex-col space-y-1">
+        <div className="flex items-center gap-4">
+          <Avatar className="h-12 w-12">
+            <AvatarImage src={(user?.image as string) || "/placeholder.svg"} alt={user?.name} />
+            <AvatarFallback>{user?.name?.slice(0, 2).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col">
+            <h2 className="text-lg font-semibold">{user?.name}</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{user?.email}</p>
           </div>
-        </PopoverContent>
-      </Popover>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+          <span className="material-symbols-outlined text-sm">verified_user</span>
+          Profile
+        </h3>
+        <div className="grid gap-2">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Make changes to your profile{" "}
+            <Link href="/settings/profile" className="underline">
+              here
+            </Link>
+            .
+          </p>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+          <span className="material-symbols-outlined text-sm">lock</span>
+          Password
+        </h3>
+        <div className="grid gap-2">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Change your password{" "}
+            <Link href="/settings/password" className="underline">
+              here
+            </Link>
+            .
+          </p>
+        </div>
+      </div>
 
-      <AboutDialog open={showAbout} onOpenChange={setShowAbout} />
-      <SettingsDialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog} />
-    </>
-  );
+      {/* Theme Settings */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+          <span className="material-symbols-outlined text-sm">palette</span>
+          Theme
+        </h3>
+        <ThemeToggle />
+      </div>
+
+      <Button asChild>
+        <Link href="/about">About GradeIT</Link>
+      </Button>
+    </div>
+  )
 }

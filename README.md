@@ -38,16 +38,16 @@ Follow these instructions to get a copy of the project up and running on your lo
 
 1.  **Clone the repository:**
 
-    ```bash
+    \`\`\`bash
     git clone https://github.com/kev0-4/gradeit
     cd my-v0-project
-    ```
+    \`\`\`
 
 2.  **Install dependencies:**
 
-    ```bash
+    \`\`\`bash
     pnpm install
-    ```
+    \`\`\`
 
 3.  **Set up Firebase:**
 
@@ -56,7 +56,7 @@ Follow these instructions to get a copy of the project up and running on your lo
     - Obtain your Firebase project configuration (API Key, Auth Domain, Project ID, etc.).
     - Create a `.env.local` file in the root of the project.
     - Add your Firebase configuration to `.env.local` like this:
-      ```env
+      \`\`\`env
       NEXT_PUBLIC_FIREBASE_API_KEY="your_api_key"
       NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="your_auth_domain"
       NEXT_PUBLIC_FIREBASE_PROJECT_ID="your_project_id"
@@ -65,12 +65,12 @@ Follow these instructions to get a copy of the project up and running on your lo
       NEXT_PUBLIC_FIREBASE_APP_ID="your_app_id"
       # Optional, if using measurement
       # NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID="your_measurement_id"
-      ```
+      \`\`\`
 
 4.  **Run the development server:**
-    ```bash
+    \`\`\`bash
     pnpm dev
-    ```
+    \`\`\`
     Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 ## Available Scripts
