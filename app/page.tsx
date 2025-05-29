@@ -43,6 +43,25 @@ const AttendanceTrendChart = dynamic(() => import("./components/attendance-trend
   loading: () => <div className="h-[350px] flex items-center justify-center">Loading chart...</div>,
 })
 
+// Demo data for when Firebase is not available
+const getDemoSubjects = () => {
+  const demoUser = localStorage.getItem("demoUser")
+  if (demoUser) {
+    const userData = JSON.parse(demoUser)
+    return userData.subjects || []
+  }
+  return []
+}
+
+const saveDemoSubjects = (subjects: any[]) => {
+  const demoUser = localStorage.getItem("demoUser")
+  if (demoUser) {
+    const userData = JSON.parse(demoUser)
+    userData.subjects = subjects
+    localStorage.setItem("demoUser", JSON.stringify(userData))
+  }
+}
+
 const App = () => {
   const [subjects, setSubjects] = useState([])
   const [newSubject, setNewSubject] = useState("")
@@ -53,6 +72,7 @@ const App = () => {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [deletingSubjectId, setDeletingSubjectId] = useState<string | null>(null)
+  const [firebaseAvailable, setFirebaseAvailable] = useState(false)
 
   // Use the OLED theme hook
   useOledTheme()
@@ -60,24 +80,61 @@ const App = () => {
   // Add user from useAuth hook at the top of the component
   const { user } = useAuth()
 
-  // Update the fetchSubjects function to use user-specific data
+  // Check Firebase availability
+  useEffect(() => {
+    const checkFirebaseAvailability = async () => {
+      if (typeof window === "undefined") return
+
+      try {
+        const { db } = await import("./firebase")
+        if (db) {
+          setFirebaseAvailable(true)
+        }
+      } catch (error) {
+        console.log("Firebase not available, using demo mode")
+        setFirebaseAvailable(false)
+      }
+    }
+
+    checkFirebaseAvailability()
+  }, [])
+
+  // Update the fetchSubjects function to handle both Firebase and demo data
   const fetchSubjects = async () => {
     if (!user) return
 
-    try {
-      const subjectsData = await getUserDocuments(user, "subjects")
-      setSubjects(subjectsData)
-    } catch (error) {
-      console.error("Error fetching subjects:", error)
+    // Check if user is a demo user
+    const isDemoUser = localStorage.getItem("demoUser")
+
+    if (isDemoUser) {
+      // Load demo data from localStorage
+      const demoSubjects = getDemoSubjects()
+      setSubjects(demoSubjects)
+      return
+    }
+
+    // Only try Firebase if it's available and user is not a demo user
+    if (firebaseAvailable) {
+      try {
+        const subjectsData = await getUserDocuments(user, "subjects")
+        setSubjects(subjectsData)
+      } catch (error) {
+        console.error("Error fetching subjects:", error)
+        // Fallback to empty array if Firebase fails
+        setSubjects([])
+      }
+    } else {
+      // Firebase not available, use empty array
+      setSubjects([])
     }
   }
 
-  // Update the useEffect to depend on user
+  // Update the useEffect to depend on user and firebaseAvailable
   useEffect(() => {
     if (user) {
       fetchSubjects()
     }
-  }, [user])
+  }, [user, firebaseAvailable])
 
   const calculateCumulativeAttendance = () => {
     const totalAttended = subjects.reduce((sum, subject) => sum + subject.attended, 0)
@@ -101,46 +158,94 @@ const App = () => {
   const { currentPercentage, requiredClasses, totalAttended, totalHappened, classesCanMiss } =
     calculateCumulativeAttendance()
 
-  // Update the addSubject function to use user-specific data
+  // Update the addSubject function to handle both Firebase and demo data
   const addSubject = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault()
       if (!newSubject || newAttended < 0 || newHappened < 0 || !user) return
 
       const goal = Math.ceil((newHappened * 3) / 4) // 75% goal
-      try {
-        const docRef = await addUserDocument(user, "subjects", {
-          name: newSubject,
-          attended: newAttended,
-          happened: newHappened,
-          goal,
-          customGoalPercentage: null,
-        })
-        setSubjects((prev) => [
-          ...prev,
-          {
-            id: docRef.id,
+      const newSubjectData = {
+        id: Date.now().toString(), // Simple ID for demo mode
+        name: newSubject,
+        attended: newAttended,
+        happened: newHappened,
+        goal,
+        customGoalPercentage: null,
+      }
+
+      // Check if user is a demo user
+      const isDemoUser = localStorage.getItem("demoUser")
+
+      if (isDemoUser) {
+        // Save to demo data
+        const updatedSubjects = [...subjects, newSubjectData]
+        setSubjects(updatedSubjects)
+        saveDemoSubjects(updatedSubjects)
+      } else if (firebaseAvailable) {
+        // Save to Firebase
+        try {
+          const docRef = await addUserDocument(user, "subjects", {
             name: newSubject,
             attended: newAttended,
             happened: newHappened,
             goal,
             customGoalPercentage: null,
-          },
-        ])
-        setNewSubject("")
-        setNewAttended(0)
-        setNewHappened(0)
-      } catch (error) {
-        console.error("Error adding subject:", error)
+          })
+          setSubjects((prev) => [
+            ...prev,
+            {
+              id: docRef.id,
+              name: newSubject,
+              attended: newAttended,
+              happened: newHappened,
+              goal,
+              customGoalPercentage: null,
+            },
+          ])
+        } catch (error) {
+          console.error("Error adding subject:", error)
+          toast.error("Failed to add subject. Please try again.")
+          return
+        }
+      } else {
+        toast.error("Cannot save data. Please try demo mode.")
+        return
       }
+
+      setNewSubject("")
+      setNewAttended(0)
+      setNewHappened(0)
+      toast.success("Subject added successfully!")
     },
-    [newSubject, newAttended, newHappened, user],
+    [newSubject, newAttended, newHappened, user, subjects, firebaseAvailable],
   )
 
-  // Update the updateSubject function to use user-specific data
+  // Update the updateSubject function to handle both Firebase and demo data
   const updateSubject = useCallback(
     async (id, updatedData) => {
       if (!user) return
+
+      // Check if user is a demo user
+      const isDemoUser = localStorage.getItem("demoUser")
+
+      if (isDemoUser) {
+        // Update demo data
+        const updatedSubjects = subjects.map((subject) =>
+          subject.id === id ? { ...subject, ...updatedData } : subject,
+        )
+        setSubjects(updatedSubjects)
+        saveDemoSubjects(updatedSubjects)
+
+        // Trigger chart refresh
+        setRefreshTrigger((prev) => prev + 1)
+        return
+      }
+
+      if (!firebaseAvailable) {
+        toast.error("Cannot update data. Firebase not available.")
+        return
+      }
 
       try {
         // Get the current subject data to determine what changed
@@ -199,9 +304,10 @@ const App = () => {
         }
       } catch (error) {
         console.error("Error updating subject:", error)
+        toast.error("Failed to update subject. Please try again.")
       }
     },
-    [user, subjects],
+    [user, subjects, firebaseAvailable],
   )
 
   const handleDeleteSubject = async (subjectId: string) => {
@@ -209,7 +315,28 @@ const App = () => {
       toast.error("User not authenticated.")
       return
     }
+
     setDeletingSubjectId(subjectId)
+
+    // Check if user is a demo user
+    const isDemoUser = localStorage.getItem("demoUser")
+
+    if (isDemoUser) {
+      // Delete from demo data
+      const updatedSubjects = subjects.filter((s) => s.id !== subjectId)
+      setSubjects(updatedSubjects)
+      saveDemoSubjects(updatedSubjects)
+      toast.success("Subject deleted successfully.")
+      setDeletingSubjectId(null)
+      return
+    }
+
+    if (!firebaseAvailable) {
+      toast.error("Cannot delete data. Firebase not available.")
+      setDeletingSubjectId(null)
+      return
+    }
+
     try {
       await deleteAttendanceHistoryForSubject(user, subjectId)
       await deleteMarksHistoryForSubject(user, subjectId)
@@ -287,6 +414,36 @@ const App = () => {
             <UserProfile />
           </div>
         </header>
+
+        {/* Demo Mode Indicator */}
+        {user && localStorage.getItem("demoUser") && (
+          <div className="mb-4 p-3 bg-blue-100 dark:bg-blue-900 oled:bg-blue-950 border border-blue-200 dark:border-blue-800 oled:border-blue-900 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 oled:text-blue-400 mr-2">
+                  info
+                </span>
+                <span className="text-sm text-blue-800 dark:text-blue-200 oled:text-blue-200">
+                  You're using demo mode. Data is stored locally.
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Firebase Unavailable Warning */}
+        {!firebaseAvailable && !localStorage.getItem("demoUser") && (
+          <div className="mb-4 p-3 bg-amber-100 dark:bg-amber-900 oled:bg-amber-950 border border-amber-200 dark:border-amber-800 oled:border-amber-900 rounded-lg">
+            <div className="flex items-center">
+              <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 oled:text-amber-400 mr-2">
+                warning
+              </span>
+              <span className="text-sm text-amber-800 dark:text-amber-200 oled:text-amber-200">
+                Cloud sync is unavailable. Please use demo mode or try again later.
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Main Content */}
         <main className="space-y-6">
