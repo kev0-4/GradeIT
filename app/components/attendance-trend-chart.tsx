@@ -1,14 +1,11 @@
-"use client";
+"use client"
 
-import { useState, useEffect, useMemo } from "react";
-import { useTheme } from "next-themes";
-import dynamic from "next/dynamic";
-import { getAttendanceHistory } from "../utils/user-data";
-import {
-  groupAttendanceByPeriod,
-  getSubjectWiseAttendance,
-} from "../utils/dateUtils";
-import { useAuth } from "../contexts/auth-context";
+import { useState, useEffect, useMemo } from "react"
+import { useTheme } from "next-themes"
+import dynamic from "next/dynamic"
+import { getAttendanceHistory } from "../utils/user-data"
+import { groupAttendanceByPeriod, getSubjectWiseAttendance } from "../utils/dateUtils"
+import { useAuth } from "../contexts/auth-context"
 
 // Default colors for both light and dark themes
 const DEFAULT_COLORS = {
@@ -18,16 +15,7 @@ const DEFAULT_COLORS = {
     background: "#F9FAFB",
     grid: "#E5E7EB",
     warning: "#D97706",
-    subjects: [
-      "#059669",
-      "#D97706",
-      "#2563EB",
-      "#EA580C",
-      "#7C3AED",
-      "#DB2777",
-      "#0D9488",
-      "#475569",
-    ],
+    subjects: ["#059669", "#D97706", "#2563EB", "#EA580C", "#7C3AED", "#DB2777", "#0D9488", "#475569"],
   },
   dark: {
     primary: "#3B82F6",
@@ -35,123 +23,101 @@ const DEFAULT_COLORS = {
     background: "#1F2937",
     grid: "#374151",
     warning: "#F59E0B",
-    subjects: [
-      "#10B981",
-      "#F59E0B",
-      "#3B82F6",
-      "#F97316",
-      "#8B5CF6",
-      "#EC4899",
-      "#14B8A6",
-      "#64748B",
-    ],
+    subjects: ["#10B981", "#F59E0B", "#3B82F6", "#F97316", "#8B5CF6", "#EC4899", "#14B8A6", "#64748B"],
   },
-};
+  amoled: {
+    primary: "#00FFFF",
+    text: "#00FFFF",
+    background: "#000000",
+    grid: "#333333",
+    warning: "#FF6F00",
+    subjects: ["#00FF00", "#FF00FF", "#00FFFF", "#FF6F00", "#8000FF", "#FF0033", "#00FFCC", "#FFFF00"],
+  },
+}
 
 const Chart = dynamic(
   () =>
     import("react-apexcharts").catch(() => ({
-      default: () => (
-        <div className="h-[350px] flex items-center justify-center">
-          Chart failed to load
-        </div>
-      ),
+      default: () => <div className="h-[350px] flex items-center justify-center">Chart failed to load</div>,
     })),
   {
     ssr: false,
-    loading: () => (
-      <div className="h-[350px] flex items-center justify-center">
-        Loading chart...
-      </div>
-    ),
-  }
-);
+    loading: () => <div className="h-[350px] flex items-center justify-center">Loading chart...</div>,
+  },
+)
 
 interface AttendanceTrendProps {
-  subjects: any[];
-  refreshTrigger?: number;
+  subjects: any[]
+  refreshTrigger?: number
 }
 
-export default function AttendanceTrendChart({
-  subjects,
-  refreshTrigger,
-}: AttendanceTrendProps) {
-  const [mounted, setMounted] = useState(false);
-  const [attendanceHistory, setAttendanceHistory] = useState([]);
-  const [chartPeriod, setChartPeriod] = useState<
-    "daily" | "weekly" | "monthly"
-  >("monthly");
-  const [chartType, setChartType] = useState<"overall" | "subject-wise">(
-    "overall"
-  );
-  const [loading, setLoading] = useState(true);
+export default function AttendanceTrendChart({ subjects, refreshTrigger }: AttendanceTrendProps) {
+  const [mounted, setMounted] = useState(false)
+  const [attendanceHistory, setAttendanceHistory] = useState([])
+  const [chartPeriod, setChartPeriod] = useState<"daily" | "weekly" | "monthly">("monthly")
+  const [chartType, setChartType] = useState<"overall" | "subject-wise">("overall")
+  const [loading, setLoading] = useState(true)
 
-  const { theme, systemTheme } = useTheme();
-  const { user } = useAuth();
+  const { theme, systemTheme } = useTheme()
+  const { user } = useAuth()
 
   // Safely get current theme with defaults
-  const currentTheme =
-    theme === "system" ? systemTheme || "light" : theme || "light";
+  const currentTheme = theme === "system" ? systemTheme || "light" : theme || "light"
 
   // Always return colors - use defaults if anything fails
   const colors = useMemo(() => {
     try {
-      return currentTheme === "dark"
-        ? DEFAULT_COLORS.dark
-        : DEFAULT_COLORS.light;
+      if (currentTheme === "amoled") {
+        return DEFAULT_COLORS.amoled
+      }
+      return currentTheme === "dark" ? DEFAULT_COLORS.dark : DEFAULT_COLORS.light
     } catch (error) {
-      console.error("Error getting theme colors, using light theme", error);
-      return DEFAULT_COLORS.light;
+      console.error("Error getting theme colors, using light theme", error)
+      return DEFAULT_COLORS.light
     }
-  }, [currentTheme]);
+  }, [currentTheme])
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     const fetchAttendanceHistory = async () => {
-      if (!user) return;
+      if (!user) return
 
-      setLoading(true);
+      setLoading(true)
       try {
-        const history = await getAttendanceHistory(user);
-        console.log("Fetched attendance records:", history.length, history);
+        const history = await getAttendanceHistory(user)
+        console.log("Fetched attendance records:", history.length, history)
 
         // Verify data quality
-        const withMissingAttended = history.filter(
-          (e) => e.attended === undefined
-        ).length;
-        const withMissingHappened = history.filter(
-          (e) => e.happened === undefined
-        ).length;
-        console.log(
-          `Data quality: ${withMissingAttended} missing attended, ${withMissingHappened} missing happened`
-        );
+        const withMissingAttended = history.filter((e) => e.attended === undefined).length
+        const withMissingHappened = history.filter((e) => e.happened === undefined).length
+        console.log(`Data quality: ${withMissingAttended} missing attended, ${withMissingHappened} missing happened`)
 
-        setAttendanceHistory(history);
+        setAttendanceHistory(history)
       } catch (error) {
-        console.error("Error fetching attendance history:", error);
+        console.error("Error fetching attendance history:", error)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
     if (user) {
-      fetchAttendanceHistory();
+      fetchAttendanceHistory()
     }
-  }, [user, refreshTrigger]);
+  }, [user, refreshTrigger])
 
   // Memoize all chart data calculations
   // Memoize all chart data calculations
   const { groupedData, currentAttendance, chartData, series } = useMemo(() => {
-    const grouped = groupAttendanceByPeriod(attendanceHistory, chartPeriod);
-    const current = getSubjectWiseAttendance(subjects);
+    const grouped = groupAttendanceByPeriod(attendanceHistory, chartPeriod)
+    const current = getSubjectWiseAttendance(subjects)
 
     // console.log("Raw grouped data:", grouped); // Debug log
 
-    let data: any = [];
-    let ser: any = [];
+    let data: any = []
+    let ser: any = []
 
     if (chartType === "overall") {
       data = grouped.slice(-12).map((item) => {
@@ -163,10 +129,7 @@ export default function AttendanceTrendChart({
         // });
 
         // Calculate percentage manually to verify
-        const calculatedPercentage =
-          item.totalClasses > 0
-            ? (item.attendedClasses / item.totalClasses) * 100
-            : 0;
+        const calculatedPercentage = item.totalClasses > 0 ? (item.attendedClasses / item.totalClasses) * 100 : 0
 
         return {
           x: item.period,
@@ -174,8 +137,8 @@ export default function AttendanceTrendChart({
           totalClasses: item.totalClasses,
           attendedClasses: item.attendedClasses,
           subjectCount: item.subjectCount,
-        };
-      });
+        }
+      })
 
       ser = [
         {
@@ -183,27 +146,23 @@ export default function AttendanceTrendChart({
           data: data,
           color: colors.primary,
         },
-      ];
+      ]
     } else {
-      const subjectNames = [
-        ...new Set(attendanceHistory.map((entry) => entry.subjectName)),
-      ].filter(Boolean);
-      const periods = grouped.slice(-12).map((item) => item.period);
+      const subjectNames = [...new Set(attendanceHistory.map((entry) => entry.subjectName))].filter(Boolean)
+      const periods = grouped.slice(-12).map((item) => item.period)
 
       ser = subjectNames.slice(0, 8).map((subjectName, index) => ({
         name: subjectName,
         data: periods.map((period) => {
-          const periodData = grouped.find((item) => item.period === period);
+          const periodData = grouped.find((item) => item.period === period)
           if (!periodData || !periodData.subjectsData) {
-            return { x: period, y: 0 };
+            return { x: period, y: 0 }
           }
 
-          const subjectData = periodData.subjectsData.find(
-            (s) => s.name === subjectName
-          );
+          const subjectData = periodData.subjectsData.find((s) => s.name === subjectName)
 
           if (!subjectData) {
-            return { x: period, y: 0 };
+            return { x: period, y: 0 }
           }
 
           // Debug log for subject data
@@ -214,19 +173,17 @@ export default function AttendanceTrendChart({
           // });
 
           const calculatedPercentage =
-            subjectData.totalClasses > 0
-              ? (subjectData.attendedClasses / subjectData.totalClasses) * 100
-              : 0;
+            subjectData.totalClasses > 0 ? (subjectData.attendedClasses / subjectData.totalClasses) * 100 : 0
 
           return {
             x: period,
             y: Math.round(calculatedPercentage * 100) / 100,
             totalClasses: subjectData.totalClasses,
             attendedClasses: subjectData.attendedClasses,
-          };
+          }
         }),
         color: colors.subjects[index % colors.subjects.length],
-      }));
+      }))
     }
 
     return {
@@ -234,8 +191,8 @@ export default function AttendanceTrendChart({
       currentAttendance: current,
       chartData: data,
       series: ser,
-    };
-  }, [attendanceHistory, chartPeriod, subjects, chartType, colors]);
+    }
+  }, [attendanceHistory, chartPeriod, subjects, chartType, colors])
 
   const chartOptions = useMemo(
     () => ({
@@ -262,14 +219,10 @@ export default function AttendanceTrendChart({
         labels: { colors: colors.text },
       },
     }),
-    [chartType, colors, currentTheme]
-  );
+    [chartType, colors, currentTheme],
+  )
   if (!mounted) {
-    return (
-      <div className="h-[350px] flex items-center justify-center">
-        Loading chart...
-      </div>
-    );
+    return <div className="h-[350px] flex items-center justify-center">Loading chart...</div>
   }
 
   if (loading) {
@@ -277,28 +230,24 @@ export default function AttendanceTrendChart({
       <div className="h-[350px] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-2"></div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Loading attendance data...
-          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading attendance data...</p>
         </div>
       </div>
-    );
+    )
   }
 
   if (attendanceHistory.length === 0) {
     return (
       <div className="h-[350px] flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
         <div className="text-center">
-          <span className="material-symbols-outlined text-4xl text-gray-400 mb-2">
-            trending_up
-          </span>
+          <span className="material-symbols-outlined text-4xl text-gray-400 mb-2">trending_up</span>
           <p className="text-lg font-medium mb-2">No Attendance History</p>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Start logging your attendance to see trends and analytics.
           </p>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -373,10 +322,7 @@ export default function AttendanceTrendChart({
               className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
             >
               <div className="flex-1 min-w-0">
-                <p
-                  className="text-sm font-medium truncate"
-                  title={subject.name}
-                >
+                <p className="text-sm font-medium truncate" title={subject.name}>
                   {subject.name}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -387,8 +333,7 @@ export default function AttendanceTrendChart({
                 <div
                   className="w-2 h-2 rounded-full"
                   style={{
-                    backgroundColor:
-                      colors.subjects[index % colors.subjects.length],
+                    backgroundColor: colors.subjects[index % colors.subjects.length],
                   }}
                 ></div>
                 <span
@@ -409,45 +354,29 @@ export default function AttendanceTrendChart({
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-            Total Entries
-          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Entries</p>
           <p className="text-lg font-bold">{attendanceHistory.length}</p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-            Avg Attendance
-          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Avg Attendance</p>
           <p className="text-lg font-bold">
             {groupedData.length > 0
-              ? (
-                  groupedData.reduce((sum, item) => sum + item.percentage, 0) /
-                  groupedData.length
-                ).toFixed(1)
+              ? (groupedData.reduce((sum, item) => sum + item.percentage, 0) / groupedData.length).toFixed(1)
               : "0"}
             %
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-            Best Period
-          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Best Period</p>
           <p className="text-lg font-bold">
-            {groupedData.length > 0
-              ? Math.max(...groupedData.map((item) => item.percentage)).toFixed(
-                  1
-                )
-              : "0"}
-            %
+            {groupedData.length > 0 ? Math.max(...groupedData.map((item) => item.percentage)).toFixed(1) : "0"}%
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-            Subjects Tracked
-          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Subjects Tracked</p>
           <p className="text-lg font-bold">{subjects.length}</p>
         </div>
       </div>
     </div>
-  );
+  )
 }

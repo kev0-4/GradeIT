@@ -1,58 +1,46 @@
 // FILE: app/login/page.tsx
 // Concern: Will this work with our new Capacitor configuration? (Answer: Yes, with minor tweaks for consistency and UX)
 
-"use client";
-
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "../contexts/auth-context";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { useTheme } from "next-themes";
-import { useToast } from "@/components/ui/use-toast"; // Assuming you have a toast component
+"use client"
+import { useRouter } from "next/navigation"
+import { useAuth } from "../contexts/auth-context"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useTheme } from "next-themes"
+import { useToast } from "@/components/ui/use-toast" // Assuming you have a toast component
 
 export default function LoginPage() {
-  const { signInWithGoogle, loading } = useAuth();
-  const router = useRouter();
-  const { theme, setTheme } = useTheme();
-  const { toast } = useToast(); // For user-facing error messages
+  const { signInWithGoogle, loading } = useAuth()
+  const router = useRouter()
+  const { theme, setTheme } = useTheme()
+  const { toast } = useToast() // For user-facing error messages
 
   const handleGoogleSignIn = async () => {
     try {
-      await signInWithGoogle();
-      router.push("/");
+      await signInWithGoogle()
+      router.push("/")
     } catch (error: any) {
-      console.error("Login failed:", error);
+      console.error("Login failed:", error)
       toast({
         title: "Sign-In Failed",
-        description:
-          error.message ||
-          "An error occurred during sign-in. Please try again.",
+        description: error.message || "An error occurred during sign-in. Please try again.",
         variant: "destructive",
-      });
+      })
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4 transition-colors duration-300">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 amoled:bg-black flex items-center justify-center p-4 transition-colors duration-300">
       {/* Theme Toggle */}
       <div className="absolute top-4 right-4">
-        <div className="flex items-center bg-white dark:bg-gray-800 rounded-full p-1 shadow-sm">
+        <div className="flex items-center bg-white dark:bg-gray-800 amoled:bg-black amoled:border amoled:border-gray-800 rounded-full p-1 shadow-sm">
           <button
             className={`w-8 h-8 rounded-full flex items-center justify-center ${
               theme === "light" ? "bg-primary-100" : ""
             }`}
             onClick={() => setTheme("light")}
           >
-            <span className="material-symbols-outlined text-yellow-500">
-              light_mode
-            </span>
+            <span className="material-symbols-outlined text-yellow-500">light_mode</span>
           </button>
           <button
             className={`w-8 h-8 rounded-full flex items-center justify-center ${
@@ -60,9 +48,15 @@ export default function LoginPage() {
             }`}
             onClick={() => setTheme("dark")}
           >
-            <span className="material-symbols-outlined text-indigo-400">
-              dark_mode
-            </span>
+            <span className="material-symbols-outlined text-indigo-400">dark_mode</span>
+          </button>
+          <button
+            className={`w-8 h-8 rounded-full flex items-center justify-center ${
+              theme === "amoled" ? "bg-gray-800 amoled:neon-glow" : ""
+            }`}
+            onClick={() => setTheme("amoled")}
+          >
+            <span className="material-symbols-outlined text-cyan-400 amoled:neon-text">smartphone</span>
           </button>
         </div>
       </div>
@@ -71,26 +65,18 @@ export default function LoginPage() {
         {/* Logo and Branding */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-primary-500 to-primary-600 rounded-full mb-4">
-            <span className="material-symbols-outlined text-2xl text-white">
-              school
-            </span>
+            <span className="material-symbols-outlined text-2xl text-white">school</span>
           </div>
-          <h1 className="text-3xl font-bold text-primary-600 dark:text-primary-400 tracking-tight">
+          <h1 className="text-3xl font-bold text-primary-600 dark:text-primary-400 amoled:text-neon-blue amoled:neon-text tracking-tight">
             GradeIT
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-2">
-            Your Academic Progress Tracker
-          </p>
+          <p className="text-gray-500 dark:text-gray-400 mt-2">Your Academic Progress Tracker</p>
         </div>
 
-        <Card className="shadow-lg border-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+        <Card className="shadow-lg border-0 bg-white/80 dark:bg-gray-800/80 amoled:bg-black/90 amoled:border amoled:border-gray-800 amoled:neon-glow backdrop-blur-sm">
           <CardHeader className="text-center pb-4">
-            <CardTitle className="text-xl font-semibold">
-              Welcome Back
-            </CardTitle>
-            <CardDescription>
-              Sign in to access your academic dashboard and track your progress
-            </CardDescription>
+            <CardTitle className="text-xl font-semibold">Welcome Back</CardTitle>
+            <CardDescription>Sign in to access your academic dashboard and track your progress</CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-4">
@@ -132,8 +118,7 @@ export default function LoginPage() {
 
             <div className="text-center">
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                By signing in, you agree to our Terms of Service and Privacy
-                Policy
+                By signing in, you agree to our Terms of Service and Privacy Policy
               </p>
             </div>
           </CardContent>
@@ -142,19 +127,15 @@ export default function LoginPage() {
         {/* Features Preview */}
         <div className="mt-8 grid grid-cols-2 gap-4 text-center">
           <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 backdrop-blur-sm">
-            <span className="material-symbols-outlined text-primary-500 mb-1">
-              event_available
-            </span>
+            <span className="material-symbols-outlined text-primary-500 mb-1">event_available</span>
             <p className="text-xs font-medium">Track Attendance</p>
           </div>
           <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 backdrop-blur-sm">
-            <span className="material-symbols-outlined text-primary-500 mb-1">
-              grade
-            </span>
+            <span className="material-symbols-outlined text-primary-500 mb-1">grade</span>
             <p className="text-xs font-medium">Monitor Grades</p>
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 }

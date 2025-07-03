@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,104 +8,114 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { useAuth } from "@/app/contexts/auth-context"
-import { getUserSettings, updateUserSettings, type AppSettings } from "@/app/utils/user-data"
-import { toast } from "sonner"
-import { Target, TrendingUp, Award, Save, X } from "lucide-react"
-import { ThemeToggle } from "@/app/components/theme-toggle"
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/app/contexts/auth-context";
+import {
+  getUserSettings,
+  updateUserSettings,
+  type AppSettings,
+} from "@/app/utils/user-data";
+import { toast } from "sonner";
+import { Target, TrendingUp, Award, Save, X } from "lucide-react";
 
 interface SettingsDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export default function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
-  const { user } = useAuth()
-  const [attendanceGoal, setAttendanceGoal] = useState<number | string>("75")
-  const [gpaGoal, setGpaGoal] = useState<number | string>("8.0")
-  const [marksPerCredit, setMarksPerCredit] = useState<number | string>("25")
-  const [isLoading, setIsLoading] = useState(false)
+export default function SettingsDialog({
+  open,
+  onOpenChange,
+}: SettingsDialogProps) {
+  const { user } = useAuth();
+  const [attendanceGoal, setAttendanceGoal] = useState<number | string>("75");
+  const [gpaGoal, setGpaGoal] = useState<number | string>("8.0");
+  const [marksPerCredit, setMarksPerCredit] = useState<number | string>("25");
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (open && user) {
       const fetchSettings = async () => {
-        setIsLoading(true)
+        setIsLoading(true);
         try {
-          const settings = await getUserSettings(user)
+          const settings = await getUserSettings(user);
           if (settings) {
-            setAttendanceGoal(settings.attendanceGoal.toString())
-            setGpaGoal(settings.gpaGoal.toString())
-            setMarksPerCredit(settings.marksPerCredit.toString())
+            setAttendanceGoal(settings.attendanceGoal.toString());
+            setGpaGoal(settings.gpaGoal.toString());
+            setMarksPerCredit(settings.marksPerCredit.toString());
           } else {
-            setAttendanceGoal("75")
-            setGpaGoal("8.0")
-            setMarksPerCredit("25")
+            setAttendanceGoal("75");
+            setGpaGoal("8.0");
+            setMarksPerCredit("25");
           }
         } catch (error) {
-          console.error("Failed to fetch settings:", error)
-          toast.error("Could not load your settings.")
-          setAttendanceGoal("75")
-          setGpaGoal("8.0")
-          setMarksPerCredit("25")
+          console.error("Failed to fetch settings:", error);
+          toast.error("Could not load your settings.");
+          setAttendanceGoal("75");
+          setGpaGoal("8.0");
+          setMarksPerCredit("25");
         } finally {
-          setIsLoading(false)
+          setIsLoading(false);
         }
-      }
-      fetchSettings()
+      };
+      fetchSettings();
     }
-  }, [open, user])
+  }, [open, user]);
 
   const handleSave = async () => {
     if (!user) {
-      toast.error("You must be logged in to save settings.")
-      return
+      toast.error("You must be logged in to save settings.");
+      return;
     }
 
-    setIsLoading(true)
+    setIsLoading(true);
 
-    const parsedAttendanceGoal = Number.parseFloat(attendanceGoal as string)
-    const parsedGpaGoal = Number.parseFloat(gpaGoal as string)
-    const parsedMarksPerCredit = Number.parseInt(marksPerCredit as string, 10)
+    const parsedAttendanceGoal = Number.parseFloat(attendanceGoal as string);
+    const parsedGpaGoal = Number.parseFloat(gpaGoal as string);
+    const parsedMarksPerCredit = Number.parseInt(marksPerCredit as string, 10);
 
-    if (isNaN(parsedAttendanceGoal) || parsedAttendanceGoal <= 0 || parsedAttendanceGoal > 100) {
-      toast.error("Please enter a valid attendance goal (1-100).")
-      setIsLoading(false)
-      return
+    if (
+      isNaN(parsedAttendanceGoal) ||
+      parsedAttendanceGoal <= 0 ||
+      parsedAttendanceGoal > 100
+    ) {
+      toast.error("Please enter a valid attendance goal (1-100).");
+      setIsLoading(false);
+      return;
     }
     if (isNaN(parsedGpaGoal) || parsedGpaGoal <= 0 || parsedGpaGoal > 10) {
-      toast.error("Please enter a valid GPA goal (e.g., 1-10).")
-      setIsLoading(false)
-      return
+      toast.error("Please enter a valid GPA goal (e.g., 1-10).");
+      setIsLoading(false);
+      return;
     }
     if (isNaN(parsedMarksPerCredit) || parsedMarksPerCredit <= 0) {
-      toast.error("Please enter a valid number for marks per credit.")
-      setIsLoading(false)
-      return
+      toast.error("Please enter a valid number for marks per credit.");
+      setIsLoading(false);
+      return;
     }
 
     const newSettings: AppSettings = {
       attendanceGoal: parsedAttendanceGoal,
       gpaGoal: parsedGpaGoal,
       marksPerCredit: parsedMarksPerCredit,
-    }
+    };
 
     try {
-      await updateUserSettings(user, newSettings)
-      toast.success("Settings saved successfully!")
-      onOpenChange(false)
+      await updateUserSettings(user, newSettings);
+      toast.success("Settings saved successfully!");
+      onOpenChange(false);
     } catch (error) {
-      console.error("Failed to save settings:", error)
-      toast.error("Failed to save settings. Please try again.")
+      console.error("Failed to save settings:", error);
+      toast.error("Failed to save settings. Please try again.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -118,7 +128,8 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
             Application Settings
           </DialogTitle>
           <DialogDescription className="text-muted-foreground mt-2">
-            Customize your academic goals and preferences to personalize your experience.
+            Customize your academic goals and preferences to personalize your
+            experience.
           </DialogDescription>
         </DialogHeader>
 
@@ -132,10 +143,15 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
                     <TrendingUp className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div className="flex-1">
-                    <Label htmlFor="attendanceGoal" className="text-base font-medium">
+                    <Label
+                      htmlFor="attendanceGoal"
+                      className="text-base font-medium"
+                    >
                       Attendance Goal
                     </Label>
-                    <p className="text-sm text-muted-foreground">Target percentage for class attendance</p>
+                    <p className="text-sm text-muted-foreground">
+                      Target percentage for class attendance
+                    </p>
                   </div>
                 </div>
                 <div className="relative">
@@ -149,7 +165,9 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
                     min="1"
                     max="100"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">%</span>
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
+                    %
+                  </span>
                 </div>
               </div>
 
@@ -165,7 +183,9 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
                     <Label htmlFor="gpaGoal" className="text-base font-medium">
                       GPA Goal
                     </Label>
-                    <p className="text-sm text-muted-foreground">Target grade point average (0-10 scale)</p>
+                    <p className="text-sm text-muted-foreground">
+                      Target grade point average (0-10 scale)
+                    </p>
                   </div>
                 </div>
                 <Input
@@ -190,10 +210,15 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
                     <Target className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                   </div>
                   <div className="flex-1">
-                    <Label htmlFor="marksPerCredit" className="text-base font-medium">
+                    <Label
+                      htmlFor="marksPerCredit"
+                      className="text-base font-medium"
+                    >
                       Marks per Credit
                     </Label>
-                    <p className="text-sm text-muted-foreground">Expected marks for each credit hour</p>
+                    <p className="text-sm text-muted-foreground">
+                      Expected marks for each credit hour
+                    </p>
                   </div>
                 </div>
                 <Input
@@ -205,22 +230,6 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
                   placeholder="25"
                   min="1"
                 />
-              </div>
-
-              <Separator />
-
-              {/* Theme Settings */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-orange-600 dark:text-orange-400">palette</span>
-                  </div>
-                  <div className="flex-1">
-                    <Label className="text-base font-medium">Theme Preference</Label>
-                    <p className="text-sm text-muted-foreground">Choose your preferred display theme</p>
-                  </div>
-                </div>
-                <ThemeToggle />
               </div>
             </CardContent>
           </Card>
@@ -237,7 +246,11 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
               <X className="w-4 h-4 mr-2" />
               Cancel
             </Button>
-            <Button onClick={handleSave} className="flex-1 sm:flex-none h-11" disabled={isLoading}>
+            <Button
+              onClick={handleSave}
+              className="flex-1 sm:flex-none h-11"
+              disabled={isLoading}
+            >
               <Save className="w-4 h-4 mr-2" />
               {isLoading ? "Saving..." : "Save Changes"}
             </Button>
@@ -245,5 +258,5 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

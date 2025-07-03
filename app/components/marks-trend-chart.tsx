@@ -1,11 +1,11 @@
-"use client";
+"use client"
 
-import { useState, useEffect, useMemo } from "react";
-import { useTheme } from "next-themes";
-import dynamic from "next/dynamic";
-import { getMarksHistory } from "../utils/user-data";
-import { groupMarksByPeriod, getSubjectWiseMarks } from "../utils/dateUtils";
-import { useAuth } from "../contexts/auth-context";
+import { useState, useEffect, useMemo } from "react"
+import { useTheme } from "next-themes"
+import dynamic from "next/dynamic"
+import { getMarksHistory } from "../utils/user-data"
+import { groupMarksByPeriod, getSubjectWiseMarks } from "../utils/dateUtils"
+import { useAuth } from "../contexts/auth-context"
 
 // Default colors for both light and dark themes
 const DEFAULT_COLORS = {
@@ -16,16 +16,7 @@ const DEFAULT_COLORS = {
     grid: "#E5E7EB",
     success: "#059669",
     warning: "#D97706",
-    subjects: [
-      "#059669",
-      "#D97706",
-      "#2563EB",
-      "#EA580C",
-      "#7C3AED",
-      "#DB2777",
-      "#0D9488",
-      "#475569",
-    ],
+    subjects: ["#059669", "#D97706", "#2563EB", "#EA580C", "#7C3AED", "#DB2777", "#0D9488", "#475569"],
   },
   dark: {
     primary: "#3B82F6",
@@ -34,106 +25,93 @@ const DEFAULT_COLORS = {
     grid: "#374151",
     success: "#10B981",
     warning: "#F59E0B",
-    subjects: [
-      "#10B981",
-      "#F59E0B",
-      "#3B82F6",
-      "#F97316",
-      "#8B5CF6",
-      "#EC4899",
-      "#14B8A6",
-      "#64748B",
-    ],
+    subjects: ["#10B981", "#F59E0B", "#3B82F6", "#F97316", "#8B5CF6", "#EC4899", "#14B8A6", "#64748B"],
   },
-};
+  amoled: {
+    primary: "#00FFFF",
+    text: "#00FFFF",
+    background: "#000000",
+    grid: "#333333",
+    success: "#00FF00",
+    warning: "#FF6F00",
+    subjects: ["#00FF00", "#FF00FF", "#00FFFF", "#FF6F00", "#8000FF", "#FF0033", "#00FFCC", "#FFFF00"],
+  },
+}
 
 const Chart = dynamic(
   () =>
     import("react-apexcharts").catch(() => ({
-      default: () => (
-        <div className="h-[350px] flex items-center justify-center">
-          Chart failed to load
-        </div>
-      ),
+      default: () => <div className="h-[350px] flex items-center justify-center">Chart failed to load</div>,
     })),
   {
     ssr: false,
-    loading: () => (
-      <div className="h-[350px] flex items-center justify-center">
-        Loading chart...
-      </div>
-    ),
-  }
-);
+    loading: () => <div className="h-[350px] flex items-center justify-center">Loading chart...</div>,
+  },
+)
 
 interface MarksTrendProps {
-  subjects: any[];
-  refreshTrigger?: number;
+  subjects: any[]
+  refreshTrigger?: number
 }
 
-export default function MarksTrendChart({
-  subjects,
-  refreshTrigger,
-}: MarksTrendProps) {
+export default function MarksTrendChart({ subjects, refreshTrigger }: MarksTrendProps) {
   // 1. State hooks
-  const [mounted, setMounted] = useState(false);
-  const [marksHistory, setMarksHistory] = useState([]);
-  const [chartPeriod, setChartPeriod] = useState<
-    "daily" | "weekly" | "monthly"
-  >("monthly");
-  const [chartType, setChartType] = useState<"overall" | "subject-wise">(
-    "overall"
-  );
-  const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false)
+  const [marksHistory, setMarksHistory] = useState([])
+  const [chartPeriod, setChartPeriod] = useState<"daily" | "weekly" | "monthly">("monthly")
+  const [chartType, setChartType] = useState<"overall" | "subject-wise">("overall")
+  const [loading, setLoading] = useState(true)
 
   // 2. Context hooks
-  const { theme, systemTheme } = useTheme();
-  const { user } = useAuth();
+  const { theme, systemTheme } = useTheme()
+  const { user } = useAuth()
 
   // 3. Derived state with fallbacks
-  const currentTheme =
-    theme === "system" ? systemTheme || "light" : theme || "light";
+  const currentTheme = theme === "system" ? systemTheme || "light" : theme || "light"
 
   // 4. Memoized colors with guaranteed defaults
   const colors = useMemo(() => {
-    return currentTheme === "dark" ? DEFAULT_COLORS.dark : DEFAULT_COLORS.light;
-  }, [currentTheme]);
+    if (currentTheme === "amoled") {
+      return DEFAULT_COLORS.amoled
+    }
+    return currentTheme === "dark" ? DEFAULT_COLORS.dark : DEFAULT_COLORS.light
+  }, [currentTheme])
 
   // 5. Effects
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     const fetchMarksHistory = async () => {
-      if (!user) return;
+      if (!user) return
 
-      setLoading(true);
+      setLoading(true)
       try {
-        const history = await getMarksHistory(user);
-        setMarksHistory(history);
+        const history = await getMarksHistory(user)
+        setMarksHistory(history)
       } catch (error) {
-        console.error("Error fetching marks history:", error);
+        console.error("Error fetching marks history:", error)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
     if (user) {
-      fetchMarksHistory();
+      fetchMarksHistory()
     }
-  }, [user, refreshTrigger]);
+  }, [user, refreshTrigger])
 
   // Memoize all chart data calculations
   const { groupedData, currentMarks, series } = useMemo(() => {
     if (!marksHistory || marksHistory.length === 0) {
-      return { groupedData: [], currentMarks: [], series: [] };
+      return { groupedData: [], currentMarks: [], series: [] }
     }
 
-    const grouped = groupMarksByPeriod(marksHistory, chartPeriod);
-    const current = getSubjectWiseMarks(subjects);
+    const grouped = groupMarksByPeriod(marksHistory, chartPeriod)
+    const current = getSubjectWiseMarks(subjects)
 
-    let ser: any = [];
+    let ser: any = []
 
     if (chartType === "overall") {
       const chartData = grouped.slice(-12).map((item) => ({
@@ -143,7 +121,7 @@ export default function MarksTrendChart({
         scoredMarks: item.scoredMarks,
         examCount: item.examCount,
         subjectCount: item.subjectCount,
-      }));
+      }))
 
       ser = [
         {
@@ -151,37 +129,32 @@ export default function MarksTrendChart({
           data: chartData,
           color: colors.primary,
         },
-      ];
+      ]
     } else {
-      const subjectNames = [
-        ...new Set(marksHistory.map((entry) => entry.subjectName)),
-      ].filter(Boolean);
-      const periods = grouped.slice(-12).map((item) => item.period);
+      const subjectNames = [...new Set(marksHistory.map((entry) => entry.subjectName))].filter(Boolean)
+      const periods = grouped.slice(-12).map((item) => item.period)
 
       ser = subjectNames.slice(0, 8).map((subjectName, index) => ({
         name: subjectName,
         data: periods.map((period) => {
-          const periodData = grouped.find((item) => item.period === period);
-          if (!periodData || !periodData.subjectsData)
-            return { x: period, y: 0 };
+          const periodData = grouped.find((item) => item.period === period)
+          if (!periodData || !periodData.subjectsData) return { x: period, y: 0 }
 
-          const subjectData = periodData.subjectsData.find(
-            (s) => s.name === subjectName
-          );
+          const subjectData = periodData.subjectsData.find((s) => s.name === subjectName)
           return {
             x: period,
             y: subjectData ? Math.round(subjectData.percentage * 100) / 100 : 0,
             totalMarks: subjectData?.totalMarks || 0,
             scoredMarks: subjectData?.scoredMarks || 0,
             examCount: subjectData?.examCount || 0,
-          };
+          }
         }),
         color: colors.subjects[index % colors.subjects.length],
-      }));
+      }))
     }
 
-    return { groupedData: grouped, currentMarks: current, series: ser };
-  }, [marksHistory, chartPeriod, subjects, chartType, colors]);
+    return { groupedData: grouped, currentMarks: current, series: ser }
+  }, [marksHistory, chartPeriod, subjects, chartType, colors])
 
   const chartOptions = useMemo(() => {
     const baseOptions = {
@@ -293,7 +266,7 @@ export default function MarksTrendChart({
       dataLabels: {
         enabled: false,
       },
-    };
+    }
 
     if (chartType === "overall") {
       return {
@@ -339,34 +312,32 @@ export default function MarksTrendChart({
             },
           ],
         },
-      };
+      }
     }
 
-    return baseOptions;
-  }, [chartType, colors, currentTheme]);
+    return baseOptions
+  }, [chartType, colors, currentTheme])
 
   if (!mounted || loading) {
     return (
       <div className="h-[350px] flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-2"></div>
       </div>
-    );
+    )
   }
 
   if (marksHistory.length === 0) {
     return (
       <div className="h-[350px] flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
         <div className="text-center">
-          <span className="material-symbols-outlined text-4xl text-gray-400 mb-2">
-            trending_up
-          </span>
+          <span className="material-symbols-outlined text-4xl text-gray-400 mb-2">trending_up</span>
           <p className="text-lg font-medium mb-2">No Marks History</p>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Start adding exam marks to see trends and analytics.
           </p>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -433,9 +404,7 @@ export default function MarksTrendChart({
 
       {/* Current Subject Status */}
       <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
-        <h4 className="text-md font-semibold mb-3">
-          Current Subject Performance
-        </h4>
+        <h4 className="text-md font-semibold mb-3">Current Subject Performance</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {currentMarks.map((subject, index) => (
             <div
@@ -443,23 +412,18 @@ export default function MarksTrendChart({
               className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
             >
               <div className="flex-1 min-w-0">
-                <p
-                  className="text-sm font-medium truncate"
-                  title={subject.name}
-                >
+                <p className="text-sm font-medium truncate" title={subject.name}>
                   {subject.name}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {subject.scored}/{subject.total} marks • {subject.credits}{" "}
-                  credits
+                  {subject.scored}/{subject.total} marks • {subject.credits} credits
                 </p>
               </div>
               <div className="flex items-center space-x-2">
                 <div
                   className="w-2 h-2 rounded-full"
                   style={{
-                    backgroundColor:
-                      colors.subjects[index % colors.subjects.length],
+                    backgroundColor: colors.subjects[index % colors.subjects.length],
                   }}
                 ></div>
                 <div className="text-right">
@@ -468,15 +432,13 @@ export default function MarksTrendChart({
                       subject.gradePoint >= 8
                         ? "text-green-600 dark:text-green-400"
                         : subject.gradePoint >= 7
-                        ? "text-yellow-600 dark:text-yellow-400"
-                        : "text-red-600 dark:text-red-400"
+                          ? "text-yellow-600 dark:text-yellow-400"
+                          : "text-red-600 dark:text-red-400"
                     }`}
                   >
                     {subject.percentage.toFixed(1)}%
                   </span>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    GPA: {subject.gradePoint}
-                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">GPA: {subject.gradePoint}</p>
                 </div>
               </div>
             </div>
@@ -487,45 +449,29 @@ export default function MarksTrendChart({
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-            Total Exams
-          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Exams</p>
           <p className="text-lg font-bold">{marksHistory.length}</p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-            Avg Marks
-          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Avg Marks</p>
           <p className="text-lg font-bold">
             {groupedData.length > 0
-              ? (
-                  groupedData.reduce((sum, item) => sum + item.percentage, 0) /
-                  groupedData.length
-                ).toFixed(1)
+              ? (groupedData.reduce((sum, item) => sum + item.percentage, 0) / groupedData.length).toFixed(1)
               : "0"}
             %
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-            Best Performance
-          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Best Performance</p>
           <p className="text-lg font-bold">
-            {groupedData.length > 0
-              ? Math.max(...groupedData.map((item) => item.percentage)).toFixed(
-                  1
-                )
-              : "0"}
-            %
+            {groupedData.length > 0 ? Math.max(...groupedData.map((item) => item.percentage)).toFixed(1) : "0"}%
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-            Subjects
-          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Subjects</p>
           <p className="text-lg font-bold">{subjects.length}</p>
         </div>
       </div>
     </div>
-  );
+  )
 }
