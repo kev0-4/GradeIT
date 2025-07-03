@@ -1,7 +1,27 @@
 {
+  "name": "gradeit-attendance-tracker",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev",
+    "lint": "next lint",
+    "start": "next start",
+    "vercel-build": "next build"
+  },
   "dependencies": {
     "@capacitor-firebase/authentication": "latest",
     "@capacitor/core": "latest",
+    "@radix-ui/react-alert-dialog": "^1.0.5",
+    "@radix-ui/react-avatar": "^1.0.4",
+    "@radix-ui/react-dialog": "^1.0.5",
+    "@radix-ui/react-dropdown-menu": "^2.0.6",
+    "@radix-ui/react-label": "^2.0.2",
+    "@radix-ui/react-popover": "^1.0.7",
+    "@radix-ui/react-select": "^2.0.0",
+    "@radix-ui/react-separator": "^1.0.3",
+    "@radix-ui/react-slot": "^1.0.2",
+    "@radix-ui/react-toast": "^1.1.5",
     "apexcharts": "^3.45.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -9,20 +29,24 @@
     "html2canvas": "^1.4.1",
     "jspdf": "latest",
     "lucide-react": "^0.454.0",
-    "next": "15.2.4",
+    "next": "14.2.16",
     "next-themes": "latest",
-    "react": "^19",
+    "react": "^18",
     "react-apexcharts": "latest",
-    "react-dom": "^19",
+    "react-dom": "^18",
     "sonner": "latest",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@types/node": "^22",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "14.0.4",
     "postcss": "^8.5",
+    "tailwindcss": "^3.3.6",
     "typescript": "^5"
   }
 }
