@@ -273,7 +273,7 @@ const App = () => {
   return (
     <ProtectedRoute>
       <div className="full-width-container bg-gray-50 dark:bg-gray-900 amoled:bg-black min-h-screen transition-colors duration-300">
-        <div className="w-full max-w-[400px] md:max-w-[768px] lg:max-w-[1024px] mx-auto p-4 md:p-6 lg:p-8 pb-20 md:pb-8 prevent-overflow">
+        <div className="w-full max-w-[400px] md:max-w-[768px] lg:max-w-[1024px] mx-auto p-4 md:p-6 lg:p-8 mobile-content-spacing md:pb-8 prevent-overflow">
           {/* Header */}
           <header className="flex justify-between items-center mb-6 pb-4 border-b border-gray-200 dark:border-gray-700 amoled:border-gray-800">
             <div className="flex items-center min-w-0 flex-1">
@@ -862,7 +862,7 @@ const App = () => {
           </main>
 
           {/* Bottom Navigation */}
-          <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 amoled:bg-black amoled:border-t amoled:border-gray-800 py-2 px-6 border-t border-gray-200 dark:border-gray-700 md:hidden z-10">
+          <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 amoled:bg-black amoled:border-t amoled:border-gray-800 py-2 px-6 border-t border-gray-200 dark:border-gray-700 md:hidden z-10 bottom-nav-safe">
             <div className="flex justify-between items-center">
               <div className="flex flex-col items-center text-primary-600 dark:text-primary-400 amoled:text-neon-purple">
                 <span className="material-symbols-outlined">home</span>
@@ -893,7 +893,9 @@ const App = () => {
             </div>
           </nav>
           {/* PWA Install Prompt */}
-          <PWAInstallPrompt />
+          <div className="fixed bottom-20 left-4 right-4 md:bottom-4 md:left-auto md:right-4 md:max-w-sm z-50">
+            <PWAInstallPrompt />
+          </div>
         </div>
       </div>
     </ProtectedRoute>

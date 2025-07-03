@@ -47,7 +47,7 @@ const TrendsPage = () => {
   return (
     <ProtectedRoute>
       <div className="full-width-container bg-gray-50 dark:bg-gray-900 amoled:bg-black min-h-screen transition-colors duration-300">
-        <div className="w-full max-w-[400px] md:max-w-[768px] lg:max-w-[1024px] mx-auto p-4 md:p-6 lg:p-8 pb-20 md:pb-8 prevent-overflow">
+        <div className="w-full max-w-[400px] md:max-w-[768px] lg:max-w-[1024px] mx-auto p-4 md:p-6 lg:p-8 mobile-content-spacing md:pb-8 prevent-overflow">
           {/* Header */}
           <header className="flex justify-between items-center mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center">
@@ -178,7 +178,7 @@ const TrendsPage = () => {
           </main>
 
           {/* Bottom Navigation */}
-          <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 py-2 px-6 border-t border-gray-200 dark:border-gray-700 md:hidden z-10">
+          <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 py-2 px-6 border-t border-gray-200 dark:border-gray-700 md:hidden z-10 bottom-nav-safe">
             <div className="flex justify-between items-center">
               <Link href="/">
                 <div className="flex flex-col items-center text-gray-600 dark:text-gray-400">

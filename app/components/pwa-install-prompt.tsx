@@ -84,7 +84,7 @@ export default function PWAInstallPrompt() {
   }
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-sm z-50">
+    <div className="fixed bottom-20 left-4 right-4 md:bottom-4 md:left-auto md:right-4 md:max-w-sm z-50 safe-area-bottom">
       <div className="bg-white dark:bg-gray-800 amoled:bg-black amoled:border amoled:border-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 amoled:neon-glow">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center">
