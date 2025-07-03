@@ -30,6 +30,7 @@
     "jspdf": "latest",
     "lucide-react": "^0.454.0",
     "next": "14.2.16",
+    "next-pwa": "latest",
     "next-themes": "latest",
     "react": "^18",
     "react-apexcharts": "latest",
@@ -47,6 +48,7 @@
     "eslint-config-next": "14.0.4",
     "postcss": "^8.5",
     "tailwindcss": "^3.3.6",
-    "typescript": "^5"
+    "typescript": "^5",
+    "webpack": "^5.89.0"
   }
 }

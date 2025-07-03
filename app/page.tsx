@@ -49,6 +49,10 @@ const AttendanceTrendChart = dynamic(() => import("./components/attendance-trend
   loading: () => <div className="h-[350px] flex items-center justify-center">Loading chart...</div>,
 })
 
+// Add the PWA install prompt component to the main page:
+// 1. Import the PWA install prompt component at the top:
+import PWAInstallPrompt from "./components/pwa-install-prompt"
+
 const App = () => {
   const [subjects, setSubjects] = useState([])
   const [newSubject, setNewSubject] = useState("")
@@ -888,6 +892,8 @@ const App = () => {
               </div>
             </div>
           </nav>
+          {/* PWA Install Prompt */}
+          <PWAInstallPrompt />
         </div>
       </div>
     </ProtectedRoute>
